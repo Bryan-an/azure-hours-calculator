@@ -6,6 +6,8 @@ const STORAGE_KEYS = {
   GOOGLE_ACCESS_TOKEN: 'googleAccessToken',
   GOOGLE_CALENDAR_ID: 'googleCalendarId',
   GOOGLE_TOKEN_EXPIRES_AT: 'googleTokenExpiresAt',
+  ICAL_URL: 'icalUrl',
+  CALENDAR_SOURCE: 'calendarSource',
   CALENDARIFIC_API_KEY: 'calendarificApiKey',
   SECURITY_SETTINGS: 'securitySettings',
 } as const;
@@ -15,6 +17,8 @@ interface SecuritySettings {
   lastActivityTimestamp: number;
   autoLogoutEnabled: boolean;
 }
+
+export type CalendarSource = 'google' | 'ical' | 'none';
 
 export class StorageUtil {
   static saveWorkSchedule(schedule: WorkSchedule): void {
@@ -137,6 +141,25 @@ export class StorageUtil {
       existingLogs.push(securityLog);
       localStorage.setItem('security_events_log', JSON.stringify(existingLogs.slice(-50)));
     }
+  }
+
+  // iCal configuration
+  static saveICalUrl(url: string): void {
+    localStorage.setItem(STORAGE_KEYS.ICAL_URL, url);
+  }
+
+  static loadICalUrl(): string | null {
+    return localStorage.getItem(STORAGE_KEYS.ICAL_URL);
+  }
+
+  // Calendar source selection
+  static saveCalendarSource(source: CalendarSource): void {
+    localStorage.setItem(STORAGE_KEYS.CALENDAR_SOURCE, source);
+  }
+
+  static loadCalendarSource(): CalendarSource {
+    const stored = localStorage.getItem(STORAGE_KEYS.CALENDAR_SOURCE) as CalendarSource;
+    return stored || 'none';
   }
 
   static saveCalendarificApiKey(apiKey: string): void {

@@ -23,8 +23,9 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { es } from 'date-fns/locale';
 import { WorkSchedule } from '../types';
-import { StorageUtil } from '../utils/storage';
+import { StorageUtil, CalendarSource } from '../utils/storage';
 import { GoogleCalendarService, GoogleAuthHelper } from '../services/googleCalendarService';
+import { ICalService } from '../services/iCalService';
 
 interface SettingsDialogProps {
   open: boolean;
@@ -59,6 +60,9 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
   const [isGoogleSignedIn, setIsGoogleSignedIn] = useState(false);
   const [sessionTimeout, setSessionTimeout] = useState<number>(480);
   const [autoLogoutEnabled, setAutoLogoutEnabled] = useState<boolean>(true);
+  const [calendarSource, setCalendarSource] = useState<CalendarSource>('none');
+  const [icalUrl, setIcalUrl] = useState<string>('');
+  const [icalConnectionStatus, setIcalConnectionStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
 
   useEffect(() => {
     if (open) {
@@ -67,6 +71,10 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
       setGoogleAccessToken(StorageUtil.loadGoogleAccessToken() || '');
       setGoogleCalendarId(StorageUtil.loadGoogleCalendarId() || '');
       setCalendarificApiKey(StorageUtil.loadCalendarificApiKey() || '');
+      
+      // Load calendar configuration
+      setCalendarSource(StorageUtil.loadCalendarSource());
+      setIcalUrl(StorageUtil.loadICalUrl() || '');
       
       // Load security settings
       const securitySettings = StorageUtil.loadSecuritySettings();
@@ -177,6 +185,18 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
     setGoogleConnectionStatus(isConnected ? 'success' : 'error');
   };
 
+  const testICalConnection = async () => {
+    if (!icalUrl || !icalUrl.trim()) {
+      setIcalConnectionStatus('error');
+      return;
+    }
+
+    setIcalConnectionStatus('testing');
+    const icalService = new ICalService({ url: icalUrl });
+    const isConnected = await icalService.testConnection();
+    setIcalConnectionStatus(isConnected ? 'success' : 'error');
+  };
+
   const handleSave = () => {
     // Guardar configuración laboral
     onWorkScheduleChange(localSchedule);
@@ -187,6 +207,10 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
     StorageUtil.saveGoogleAccessToken(googleAccessToken);
     StorageUtil.saveGoogleCalendarId(googleCalendarId);
     StorageUtil.saveCalendarificApiKey(calendarificApiKey);
+    
+    // Save calendar configuration
+    StorageUtil.saveCalendarSource(calendarSource);
+    StorageUtil.saveICalUrl(icalUrl);
 
     // Save security settings
     StorageUtil.saveSecuritySettings({
@@ -310,21 +334,91 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
             </Typography>
 
             <Typography variant="subtitle1" gutterBottom>
-              Google Calendar (Calendario de Reuniones)
+              Fuente de Calendario
             </Typography>
+            <FormControl fullWidth sx={{ mb: 3 }}>
+              <InputLabel>Seleccionar fuente de calendario</InputLabel>
+              <Select
+                value={calendarSource}
+                onChange={(e) => setCalendarSource(e.target.value as CalendarSource)}
+                label="Seleccionar fuente de calendario"
+              >
+                <MenuItem value="none">Sin calendario</MenuItem>
+                <MenuItem value="google">Google Calendar (OAuth)</MenuItem>
+                <MenuItem value="ical">iCal URL Público</MenuItem>
+              </Select>
+            </FormControl>
+
+            {calendarSource === 'google' && (
+              <>
+                <Typography variant="subtitle1" gutterBottom>
+                  Google Calendar (OAuth)
+                </Typography>
+                <Alert severity="warning" sx={{ mb: 2 }}>
+                  ⚠️ Requiere permisos de Google Cloud Console para crear proyecto OAuth
+                </Alert>
+              </>
+            )}
+
+            {calendarSource === 'ical' && (
+              <>
+                <Typography variant="subtitle1" gutterBottom>
+                  iCal URL Público
+                </Typography>
+                <Alert severity="info" sx={{ mb: 2 }}>
+                  💡 Alternativa simple que no requiere permisos corporativos. Solo necesitas la URL pública de tu calendario.
+                </Alert>
+              </>
+            )}
             <Grid container spacing={2}>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Google Client ID"
-                  value={googleClientId}
-                  onChange={(e) => setGoogleClientId(e.target.value)}
-                  placeholder="123456789012-abc...xyz.apps.googleusercontent.com"
-                  helperText="Client ID de tu aplicación Google OAuth (Google Cloud Console)"
-                />
-              </Grid>
+              {calendarSource === 'google' && (
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="Google Client ID"
+                    value={googleClientId}
+                    onChange={(e) => setGoogleClientId(e.target.value)}
+                    placeholder="123456789012-abc...xyz.apps.googleusercontent.com"
+                    helperText="Client ID de tu aplicación Google OAuth (Google Cloud Console)"
+                  />
+                </Grid>
+              )}
               
-              {!isGoogleSignedIn ? (
+              {calendarSource === 'ical' && (
+                <>
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="iCal URL Público"
+                      value={icalUrl}
+                      onChange={(e) => setIcalUrl(e.target.value)}
+                      placeholder="https://calendar.google.com/calendar/ical/tu-calendario/public/basic.ics"
+                      helperText="URL pública del calendario en formato iCal (.ics)"
+                    />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <Button
+                      variant="outlined"
+                      onClick={testICalConnection}
+                      disabled={icalConnectionStatus === 'testing' || !icalUrl}
+                    >
+                      {icalConnectionStatus === 'testing' ? 'Probando...' : 'Probar Conexión'}
+                    </Button>
+                    {icalConnectionStatus === 'success' && (
+                      <Alert severity="success" sx={{ mt: 1 }}>
+                        ✅ Conexión exitosa con iCal
+                      </Alert>
+                    )}
+                    {icalConnectionStatus === 'error' && (
+                      <Alert severity="error" sx={{ mt: 1 }}>
+                        ❌ Error de conexión. Verifica que la URL sea accesible y válida.
+                      </Alert>
+                    )}
+                  </Grid>
+                </>
+              )}
+              
+              {calendarSource === 'google' && !isGoogleSignedIn && (
                 <Grid item xs={12}>
                   <Button
                     variant="contained"
@@ -340,7 +434,9 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                     </Alert>
                   )}
                 </Grid>
-              ) : (
+              )}
+              
+              {calendarSource === 'google' && isGoogleSignedIn && (
                 <>
                   <Grid item xs={12}>
                     <Alert severity="success" sx={{ mb: 2 }}>

@@ -30,6 +30,7 @@ import { WorkSchedule, Holiday, Meeting, CalculationResult } from '../types';
 import { DateCalculationsUtil } from '../utils/dateCalculations';
 import { HolidayService } from '../services/holidayService';
 import { GoogleCalendarService } from '../services/googleCalendarService';
+import { ICalService } from '../services/iCalService';
 import { StorageUtil } from '../utils/storage';
 
 interface TaskCalculatorProps {
@@ -68,6 +69,24 @@ export const TaskCalculator: React.FC<TaskCalculatorProps> = ({ workSchedule }) 
     StorageUtil.clearExpiredSession();
     StorageUtil.updateLastActivity();
     
+    const calendarSource = StorageUtil.loadCalendarSource();
+    
+    if (calendarSource === 'none') {
+      return [];
+    }
+    
+    if (calendarSource === 'google') {
+      return await loadGoogleCalendarEvents(startDate, endDate);
+    }
+    
+    if (calendarSource === 'ical') {
+      return await loadICalEvents(startDate, endDate);
+    }
+    
+    return [];
+  };
+
+  const loadGoogleCalendarEvents = async (startDate: Date, endDate: Date) => {
     const googleAccessToken = StorageUtil.loadGoogleAccessToken();
     const googleCalendarId = StorageUtil.loadGoogleCalendarId();
     const tokenExpiresAt = StorageUtil.loadGoogleTokenExpiresAt();
@@ -90,6 +109,23 @@ export const TaskCalculator: React.FC<TaskCalculatorProps> = ({ workSchedule }) 
         StorageUtil.clearGoogleAuth();
         setError('Sesión de Google Calendar expirada. Por favor, vuelve a autenticarte en Configuración.');
       }
+      return [];
+    }
+  };
+
+  const loadICalEvents = async (startDate: Date, endDate: Date) => {
+    const icalUrl = StorageUtil.loadICalUrl();
+
+    if (!icalUrl) {
+      return [];
+    }
+
+    try {
+      const icalService = new ICalService({ url: icalUrl });
+      return await icalService.getEvents(startDate, endDate);
+    } catch (error) {
+      console.error('Error loading iCal events:', error);
+      setError('Error al cargar eventos del calendario iCal. Verifica la URL en Configuración.');
       return [];
     }
   };
@@ -158,6 +194,19 @@ export const TaskCalculator: React.FC<TaskCalculatorProps> = ({ workSchedule }) 
     return (minutes / 60).toFixed(1);
   };
 
+  const getCalendarSourceLabel = () => {
+    const source = StorageUtil.loadCalendarSource();
+    switch (source) {
+      case 'google':
+        return 'Google Calendar';
+      case 'ical':
+        return 'iCal';
+      case 'none':
+      default:
+        return 'calendario';
+    }
+  };
+
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={es}>
       <Card>
@@ -216,7 +265,7 @@ export const TaskCalculator: React.FC<TaskCalculatorProps> = ({ workSchedule }) 
                   onChange={(e) => setExcludeMeetings(e.target.checked)}
                 />
               }
-              label="Excluir tiempo de eventos (Google Calendar)"
+              label={`Excluir tiempo de eventos (${getCalendarSourceLabel()})`}
             />
           </Box>
 
