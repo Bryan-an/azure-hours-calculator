@@ -95,8 +95,8 @@ export class DateCalculationsUtil {
 
       // Usar los minutos disponibles
       if (remainingMinutes <= availableMinutesInDay) {
-        // Termina en este día
-        const endTime = this.addMinutesToDate(currentDate, remainingMinutes);
+        // Termina en este día - calcular el tiempo final considerando interrupciones
+        const endTime = this.calculateEndTimeWithMeetings(currentDate, remainingMinutes, schedule, meetings, excludeMeetings);
         remainingMinutes = 0;
         
         return {
@@ -136,6 +136,112 @@ export class DateCalculationsUtil {
       const meetingDateString = format(meeting.start, 'yyyy-MM-dd');
       return meetingDateString === dateString;
     });
+  }
+
+  private static calculateEndTimeWithMeetings(
+    startOfDay: Date,
+    minutesToWork: number,
+    schedule: WorkSchedule,
+    meetings: Meeting[],
+    excludeMeetings: boolean
+  ): Date {
+    if (!excludeMeetings) {
+      // Sin exclusión de reuniones, simplemente agregar el tiempo
+      return this.addMinutesToDate(startOfDay, minutesToWork);
+    }
+
+    const dayMeetings = this.getMeetingsForDay(startOfDay, meetings)
+      .filter(meeting => !meeting.isOptional)
+      .sort((a, b) => a.start.getTime() - b.start.getTime());
+
+    let remainingMinutes = minutesToWork;
+
+    // Crear intervalos de trabajo disponibles considerando reuniones y almuerzo
+    const workIntervals = this.getWorkIntervalsForDay(startOfDay, schedule, dayMeetings);
+
+    for (const interval of workIntervals) {
+      const intervalDuration = differenceInMinutes(interval.end, interval.start);
+      
+      if (remainingMinutes <= intervalDuration) {
+        // El trabajo termina en este intervalo
+        return this.addMinutesToDate(interval.start, remainingMinutes);
+      } else {
+        // Usar todo el intervalo y continuar
+        remainingMinutes -= intervalDuration;
+      }
+    }
+
+    // Si llegamos aquí, necesitamos más tiempo del disponible en el día
+    // Retornar el final del último intervalo de trabajo
+    const lastInterval = workIntervals[workIntervals.length - 1];
+    return lastInterval ? lastInterval.end : this.addMinutesToDate(startOfDay, minutesToWork);
+  }
+
+  private static getWorkIntervalsForDay(
+    date: Date,
+    schedule: WorkSchedule,
+    meetings: Meeting[]
+  ): Array<{ start: Date; end: Date }> {
+    const [startHour, startMinute] = schedule.startTime.split(':').map(Number);
+    const [endHour, endMinute] = schedule.endTime.split(':').map(Number);
+    const [lunchStartHour, lunchStartMinute] = schedule.lunchStart.split(':').map(Number);
+    const [lunchEndHour, lunchEndMinute] = schedule.lunchEnd.split(':').map(Number);
+
+    const dayStart = new Date(date);
+    dayStart.setHours(startHour, startMinute, 0, 0);
+
+    const dayEnd = new Date(date);
+    dayEnd.setHours(endHour, endMinute, 0, 0);
+
+    const lunchStart = new Date(date);
+    lunchStart.setHours(lunchStartHour, lunchStartMinute, 0, 0);
+
+    const lunchEnd = new Date(date);
+    lunchEnd.setHours(lunchEndHour, lunchEndMinute, 0, 0);
+
+    // Crear lista de todos los períodos no disponibles (almuerzo + reuniones)
+    const unavailableIntervals: Array<{ start: Date; end: Date }> = [
+      { start: lunchStart, end: lunchEnd }
+    ];
+
+    // Agregar reuniones del día
+    meetings.forEach(meeting => {
+      unavailableIntervals.push({
+        start: new Date(meeting.start),
+        end: new Date(meeting.end)
+      });
+    });
+
+    // Ordenar intervalos no disponibles por hora de inicio
+    unavailableIntervals.sort((a, b) => a.start.getTime() - b.start.getTime());
+
+    // Calcular intervalos de trabajo disponibles
+    const workIntervals: Array<{ start: Date; end: Date }> = [];
+    let currentStart = dayStart;
+
+    for (const unavailable of unavailableIntervals) {
+      // Si hay tiempo disponible antes de este período no disponible
+      if (currentStart < unavailable.start) {
+        workIntervals.push({
+          start: new Date(currentStart),
+          end: new Date(unavailable.start)
+        });
+      }
+      // Mover el inicio actual al final del período no disponible
+      if (unavailable.end > currentStart) {
+        currentStart = unavailable.end;
+      }
+    }
+
+    // Agregar el último intervalo si queda tiempo después del último período no disponible
+    if (currentStart < dayEnd) {
+      workIntervals.push({
+        start: new Date(currentStart),
+        end: new Date(dayEnd)
+      });
+    }
+
+    return workIntervals.filter(interval => interval.start < interval.end);
   }
 
   static formatDateForDisplay(date: Date): string {
