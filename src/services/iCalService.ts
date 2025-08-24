@@ -74,11 +74,17 @@ export class ICalService {
     } catch (error) {
       this.logSecurityEvent('ical_access_error', {
         error: error instanceof Error ? error.message : 'unknown',
-        url: this.sanitizeUrl(this.url)
+        url: this.sanitizeUrl(this.url),
+        usedProxy: this.needsCorsProxy(this.url),
+        isElectron: !!(window as any).require || !!(window as any).electronAPI || navigator.userAgent.includes('Electron')
       });
       
       console.error('Error fetching iCal data:', error);
-      return [];
+      console.error('URL attempted:', this.sanitizeUrl(this.url));
+      console.error('Used proxy:', this.needsCorsProxy(this.url));
+      console.error('Is Electron:', !!(window as any).require || !!(window as any).electronAPI || navigator.userAgent.includes('Electron'));
+      
+      throw error; // Re-throw to show user the specific error
     }
   }
 
@@ -230,7 +236,13 @@ export class ICalService {
   }
 
   private needsCorsProxy(url: string): boolean {
-    // Check if URL is from domains that typically have CORS restrictions
+    // In Electron, we don't need CORS proxy since there are no CORS restrictions
+    const isElectron = !!(window as any).require || !!(window as any).electronAPI || navigator.userAgent.includes('Electron');
+    if (isElectron) {
+      return false;
+    }
+    
+    // Check if URL is from domains that typically have CORS restrictions in browsers
     const corsRestrictedDomains = [
       'calendar.google.com',
       'outlook.live.com',
