@@ -42,3 +42,5 @@ export interface CalculationResult {
   holidaysExcluded: Holiday[];
   meetingsExcluded: Meeting[];
 }
+
+export type CalendarSource = 'google' | 'ical' | 'none';

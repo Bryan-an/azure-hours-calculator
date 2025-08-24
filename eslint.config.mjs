@@ -9,8 +9,17 @@ export default tseslint.config(
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
   {
+    ignores: [
+      'build/**',
+      'build/**/*',
+      'dist/**',
+      'dist/**/*',
+      'public/electron.js',
+      'node_modules/**',
+    ],
+  },
+  {
     files: ['**/*.{js,jsx,ts,tsx}'],
-    ignores: ['build/**/*', 'dist/**/*', 'public/electron.js'],
     plugins: {
       react: reactPlugin,
       'react-hooks': reactHooksPlugin,

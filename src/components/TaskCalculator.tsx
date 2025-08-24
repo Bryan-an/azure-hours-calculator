@@ -28,20 +28,25 @@ import EventIcon from '@mui/icons-material/Event';
 import HolidayVillageIcon from '@mui/icons-material/HolidayVillage';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import { WorkSchedule, Holiday, Meeting, CalculationResult } from '../types';
+import { Holiday, Meeting, CalculationResult } from '../types';
 import { DateCalculationsUtil } from '../utils/dateCalculations';
 import { HolidayService } from '../services/holidayService';
 import { GoogleCalendarService } from '../services/googleCalendarService';
 import { ICalService } from '../services/iCalService';
-import { StorageUtil } from '../utils/storage';
+import { useSettingsStore } from '../stores/settingsStore';
 
-interface TaskCalculatorProps {
-  workSchedule: WorkSchedule;
-}
-
-export const TaskCalculator: React.FC<TaskCalculatorProps> = ({
-  workSchedule,
-}) => {
+export const TaskCalculator: React.FC = () => {
+  // Zustand stores
+  const {
+    workSchedule,
+    calendarSource,
+    googleAuth,
+    icalUrl,
+    calendarificApiKey: _calendarificApiKey,
+    clearExpiredSession,
+    updateLastActivity,
+    clearGoogleAuth,
+  } = useSettingsStore();
   const [estimatedHours, setEstimatedHours] = useState<string>('');
   const [startDate, setStartDate] = useState<Date>(new Date());
   const [excludeHolidays, setExcludeHolidays] = useState<boolean>(true);
@@ -78,10 +83,8 @@ export const TaskCalculator: React.FC<TaskCalculatorProps> = ({
 
   const loadEvents = async (startDate: Date, endDate: Date) => {
     // Check and clear expired sessions
-    StorageUtil.clearExpiredSession();
-    StorageUtil.updateLastActivity();
-
-    const calendarSource = StorageUtil.loadCalendarSource();
+    clearExpiredSession();
+    updateLastActivity();
 
     if (calendarSource === 'none') {
       return [];
@@ -99,9 +102,11 @@ export const TaskCalculator: React.FC<TaskCalculatorProps> = ({
   };
 
   const loadGoogleCalendarEvents = async (startDate: Date, endDate: Date) => {
-    const googleAccessToken = StorageUtil.loadGoogleAccessToken();
-    const googleCalendarId = StorageUtil.loadGoogleCalendarId();
-    const tokenExpiresAt = StorageUtil.loadGoogleTokenExpiresAt();
+    const {
+      accessToken: googleAccessToken,
+      calendarId: googleCalendarId,
+      tokenExpiresAt,
+    } = googleAuth;
 
     if (!googleAccessToken) {
       return [];
@@ -121,7 +126,7 @@ export const TaskCalculator: React.FC<TaskCalculatorProps> = ({
         (error.message.includes('Token') || error.message.includes('expirado'))
       ) {
         // Access token might be expired
-        StorageUtil.clearGoogleAuth();
+        clearGoogleAuth();
         setError(
           'Sesión de Google Calendar expirada. Por favor, vuelve a autenticarte en Configuración.'
         );
@@ -131,8 +136,6 @@ export const TaskCalculator: React.FC<TaskCalculatorProps> = ({
   };
 
   const loadICalEvents = async (startDate: Date, endDate: Date) => {
-    const icalUrl = StorageUtil.loadICalUrl();
-
     if (!icalUrl) {
       return [];
     }
@@ -246,8 +249,7 @@ export const TaskCalculator: React.FC<TaskCalculatorProps> = ({
   };
 
   const getCalendarSourceLabel = () => {
-    const source = StorageUtil.loadCalendarSource();
-    switch (source) {
+    switch (calendarSource) {
       case 'google':
         return 'Google Calendar';
       case 'ical':

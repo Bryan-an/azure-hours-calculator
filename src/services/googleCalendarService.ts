@@ -49,8 +49,8 @@ export class GoogleCalendarService {
       });
 
       // Clear expired tokens to force re-authentication
-      const { StorageUtil } = await import('../utils/storage');
-      StorageUtil.clearGoogleAuth();
+      const { useSettingsStore } = await import('../stores/settingsStore');
+      useSettingsStore.getState().clearGoogleAuth();
 
       throw new Error(
         'Token expirado. Por favor, vuelve a autenticarte en Configuración.'
@@ -167,8 +167,8 @@ export class GoogleCalendarService {
       console.error('Error fetching events from Google Calendar:', error);
       if (axios.isAxiosError(error) && error.response?.status === 401) {
         // Clear invalid token
-        const { StorageUtil } = await import('../utils/storage');
-        StorageUtil.clearGoogleAuth();
+        const { useSettingsStore } = await import('../stores/settingsStore');
+        useSettingsStore.getState().clearGoogleAuth();
         throw new Error(
           'Token de acceso de Google Calendar expirado o inválido'
         );

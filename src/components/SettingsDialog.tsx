@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -22,19 +22,18 @@ import { TimePicker } from '@mui/x-date-pickers/TimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { es } from 'date-fns/locale';
-import { WorkSchedule } from '../types';
-import { StorageUtil, CalendarSource } from '../utils/storage';
+import { CalendarSource } from '../types';
 import {
   GoogleCalendarService,
   GoogleAuthHelper,
 } from '../services/googleCalendarService';
 import { ICalService } from '../services/iCalService';
+import { useSettingsStore } from '../stores/settingsStore';
+import { useUIStore } from '../stores/uiStore';
 
 interface SettingsDialogProps {
   open: boolean;
   onClose: () => void;
-  workSchedule: WorkSchedule;
-  onWorkScheduleChange: (schedule: WorkSchedule) => void;
 }
 
 const DAYS_OF_WEEK = [
@@ -50,57 +49,68 @@ const DAYS_OF_WEEK = [
 export const SettingsDialog: React.FC<SettingsDialogProps> = ({
   open,
   onClose,
-  workSchedule,
-  onWorkScheduleChange,
 }) => {
-  const [localSchedule, setLocalSchedule] =
-    useState<WorkSchedule>(workSchedule);
-  const [googleClientId, setGoogleClientId] = useState('');
-  const [googleAccessToken, setGoogleAccessToken] = useState('');
-  const [googleCalendarId, setGoogleCalendarId] = useState('');
-  const [calendarificApiKey, setCalendarificApiKey] = useState('');
+  // Zustand stores
+  const {
+    workSchedule,
+    setWorkSchedule,
+    googleAuth,
+    setGoogleAuth,
+    clearGoogleAuth,
+    calendarSource,
+    setCalendarSource,
+    icalUrl,
+    setICalUrl,
+    calendarificApiKey,
+    setCalendarificApiKey,
+    securitySettings,
+    setSecuritySettings,
+    clearExpiredSession,
+    clearAllData,
+  } = useSettingsStore();
+  const _uiStore = useUIStore();
+
+  // Local UI state only
   const [googleConnectionStatus, setGoogleConnectionStatus] = useState<
     'idle' | 'testing' | 'success' | 'error' | 'authenticating'
   >('idle');
   const [availableCalendars, setAvailableCalendars] = useState<
     Array<{ id: string; summary: string }>
   >([]);
-  const [isGoogleSignedIn, setIsGoogleSignedIn] = useState(false);
-  const [sessionTimeout, setSessionTimeout] = useState<number>(480);
-  const [autoLogoutEnabled, setAutoLogoutEnabled] = useState<boolean>(true);
-  const [calendarSource, setCalendarSource] = useState<CalendarSource>('none');
-  const [icalUrl, setIcalUrl] = useState<string>('');
   const [icalConnectionStatus, setIcalConnectionStatus] = useState<
     'idle' | 'testing' | 'success' | 'error'
   >('idle');
 
+  const loadAvailableCalendars = useCallback(async () => {
+    if (!googleAuth.accessToken) return;
+
+    try {
+      const googleService = new GoogleCalendarService({
+        accessToken: googleAuth.accessToken,
+      });
+      const calendars = await googleService.getCalendarList();
+      setAvailableCalendars(calendars);
+    } catch (error) {
+      console.error('Error loading calendars:', error);
+    }
+  }, [googleAuth.accessToken]);
+
   useEffect(() => {
     if (open) {
-      setLocalSchedule(workSchedule);
-      setGoogleClientId(StorageUtil.loadGoogleClientId() || '');
-      setGoogleAccessToken(StorageUtil.loadGoogleAccessToken() || '');
-      setGoogleCalendarId(StorageUtil.loadGoogleCalendarId() || '');
-      setCalendarificApiKey(StorageUtil.loadCalendarificApiKey() || '');
-
-      // Load calendar configuration
-      setCalendarSource(StorageUtil.loadCalendarSource());
-      setIcalUrl(StorageUtil.loadICalUrl() || '');
-
-      // Load security settings
-      const securitySettings = StorageUtil.loadSecuritySettings();
-      setSessionTimeout(securitySettings.sessionTimeoutMinutes);
-      setAutoLogoutEnabled(securitySettings.autoLogoutEnabled);
-
       // Check if user is signed in to Google and session is not expired
-      StorageUtil.clearExpiredSession();
-      setIsGoogleSignedIn(!!StorageUtil.loadGoogleAccessToken());
+      clearExpiredSession();
 
       // Load available calendars if already authenticated
-      if (StorageUtil.loadGoogleAccessToken()) {
+      if (googleAuth.accessToken) {
         loadAvailableCalendars();
       }
     }
-  }, [open, workSchedule]);
+  }, [
+    open,
+    googleAuth.accessToken,
+    clearExpiredSession,
+    loadAvailableCalendars,
+  ]);
 
   const parseTime = (timeString: string): Date => {
     const [hours, minutes] = timeString.split(':').map(Number);
@@ -116,23 +126,10 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
 
   const handleWorkDayChange = (day: number, checked: boolean) => {
     const newWorkDays = checked
-      ? [...localSchedule.workDays, day].sort()
-      : localSchedule.workDays.filter((d) => d !== day);
+      ? [...workSchedule.workDays, day].sort()
+      : workSchedule.workDays.filter((d) => d !== day);
 
-    setLocalSchedule({ ...localSchedule, workDays: newWorkDays });
-  };
-
-  const loadAvailableCalendars = async () => {
-    const accessToken = StorageUtil.loadGoogleAccessToken();
-    if (!accessToken) return;
-
-    try {
-      const googleService = new GoogleCalendarService({ accessToken });
-      const calendars = await googleService.getCalendarList();
-      setAvailableCalendars(calendars);
-    } catch (error) {
-      console.error('Error loading calendars:', error);
-    }
+    setWorkSchedule({ ...workSchedule, workDays: newWorkDays });
   };
 
   const validateGoogleClientId = (clientId: string): boolean => {
@@ -143,12 +140,12 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
   };
 
   const handleGoogleSignIn = async () => {
-    if (!googleClientId || !googleClientId.trim()) {
+    if (!googleAuth.clientId || !googleAuth.clientId.trim()) {
       setGoogleConnectionStatus('error');
       return;
     }
 
-    const trimmedClientId = googleClientId.trim();
+    const trimmedClientId = googleAuth.clientId.trim();
     if (!validateGoogleClientId(trimmedClientId)) {
       setGoogleConnectionStatus('error');
       return;
@@ -157,11 +154,10 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
     setGoogleConnectionStatus('authenticating');
 
     try {
-      GoogleAuthHelper.setClientId(googleClientId.trim());
+      GoogleAuthHelper.setClientId(googleAuth.clientId.trim());
       const accessToken = await GoogleAuthHelper.signIn();
 
-      setGoogleAccessToken(accessToken);
-      setIsGoogleSignedIn(true);
+      setGoogleAuth({ accessToken });
 
       const googleService = new GoogleCalendarService({ accessToken });
       const isConnected = await googleService.testConnection();
@@ -181,27 +177,24 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
   const handleGoogleSignOut = async () => {
     try {
       await GoogleAuthHelper.signOut();
-      setGoogleAccessToken('');
-      setGoogleCalendarId('');
-      setIsGoogleSignedIn(false);
+      clearGoogleAuth();
       setAvailableCalendars([]);
       setGoogleConnectionStatus('idle');
-      StorageUtil.clearGoogleAuth();
     } catch (error) {
       console.error('Google sign-out error:', error);
     }
   };
 
   const testGoogleConnection = async () => {
-    if (!googleAccessToken) {
+    if (!googleAuth.accessToken) {
       setGoogleConnectionStatus('error');
       return;
     }
 
     setGoogleConnectionStatus('testing');
     const googleService = new GoogleCalendarService({
-      accessToken: googleAccessToken,
-      calendarId: googleCalendarId || 'primary',
+      accessToken: googleAuth.accessToken,
+      calendarId: googleAuth.calendarId || 'primary',
     });
     const isConnected = await googleService.testConnection();
     setGoogleConnectionStatus(isConnected ? 'success' : 'error');
@@ -220,40 +213,16 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
   };
 
   const handleSave = () => {
-    // Guardar configuración laboral
-    onWorkScheduleChange(localSchedule);
-    StorageUtil.saveWorkSchedule(localSchedule);
-
-    // Guardar configuraciones de APIs
-    StorageUtil.saveGoogleClientId(googleClientId);
-    StorageUtil.saveGoogleAccessToken(googleAccessToken);
-    StorageUtil.saveGoogleCalendarId(googleCalendarId);
-    StorageUtil.saveCalendarificApiKey(calendarificApiKey);
-
-    // Save calendar configuration
-    StorageUtil.saveCalendarSource(calendarSource);
-    StorageUtil.saveICalUrl(icalUrl);
-
-    // Save security settings
-    StorageUtil.saveSecuritySettings({
-      sessionTimeoutMinutes: sessionTimeout,
-      lastActivityTimestamp: Date.now(),
-      autoLogoutEnabled: autoLogoutEnabled,
-    });
-
+    // All changes are already saved to stores in real-time
+    // Just close the dialog
     onClose();
   };
 
   const handleReset = () => {
-    const defaultSchedule = StorageUtil.getDefaultWorkSchedule();
-    setLocalSchedule(defaultSchedule);
-    setGoogleClientId('');
-    setGoogleAccessToken('');
-    setGoogleCalendarId('');
-    setCalendarificApiKey('');
+    clearAllData();
     setGoogleConnectionStatus('idle');
-    setIsGoogleSignedIn(false);
     setAvailableCalendars([]);
+    setIcalConnectionStatus('idle');
   };
 
   return (
@@ -271,10 +240,10 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
               <Grid item xs={6}>
                 <TimePicker
                   label="Hora de inicio"
-                  value={parseTime(localSchedule.startTime)}
+                  value={parseTime(workSchedule.startTime)}
                   onChange={(newValue) =>
-                    setLocalSchedule({
-                      ...localSchedule,
+                    setWorkSchedule({
+                      ...workSchedule,
                       startTime: formatTime(newValue),
                     })
                   }
@@ -286,10 +255,10 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
               <Grid item xs={6}>
                 <TimePicker
                   label="Hora de fin"
-                  value={parseTime(localSchedule.endTime)}
+                  value={parseTime(workSchedule.endTime)}
                   onChange={(newValue) =>
-                    setLocalSchedule({
-                      ...localSchedule,
+                    setWorkSchedule({
+                      ...workSchedule,
                       endTime: formatTime(newValue),
                     })
                   }
@@ -301,10 +270,10 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
               <Grid item xs={6}>
                 <TimePicker
                   label="Inicio de almuerzo"
-                  value={parseTime(localSchedule.lunchStart)}
+                  value={parseTime(workSchedule.lunchStart)}
                   onChange={(newValue) =>
-                    setLocalSchedule({
-                      ...localSchedule,
+                    setWorkSchedule({
+                      ...workSchedule,
                       lunchStart: formatTime(newValue),
                     })
                   }
@@ -316,10 +285,10 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
               <Grid item xs={6}>
                 <TimePicker
                   label="Fin de almuerzo"
-                  value={parseTime(localSchedule.lunchEnd)}
+                  value={parseTime(workSchedule.lunchEnd)}
                   onChange={(newValue) =>
-                    setLocalSchedule({
-                      ...localSchedule,
+                    setWorkSchedule({
+                      ...workSchedule,
                       lunchEnd: formatTime(newValue),
                     })
                   }
@@ -339,7 +308,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                   key={day.value}
                   control={
                     <Checkbox
-                      checked={localSchedule.workDays.includes(day.value)}
+                      checked={workSchedule.workDays.includes(day.value)}
                       onChange={(e) =>
                         handleWorkDayChange(day.value, e.target.checked)
                       }
@@ -437,8 +406,10 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                   <TextField
                     fullWidth
                     label="Google Client ID"
-                    value={googleClientId}
-                    onChange={(e) => setGoogleClientId(e.target.value)}
+                    value={googleAuth.clientId || ''}
+                    onChange={(e) =>
+                      setGoogleAuth({ clientId: e.target.value })
+                    }
                     placeholder="123456789012-abc...xyz.apps.googleusercontent.com"
                     helperText="Client ID de tu aplicación Google OAuth (Google Cloud Console)"
                   />
@@ -451,8 +422,8 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                     <TextField
                       fullWidth
                       label="iCal URL Público"
-                      value={icalUrl}
-                      onChange={(e) => setIcalUrl(e.target.value)}
+                      value={icalUrl || ''}
+                      onChange={(e) => setICalUrl(e.target.value)}
                       placeholder="https://calendar.google.com/calendar/ical/tu-calendario/public/basic.ics"
                       helperText="URL pública del calendario en formato iCal (.ics)"
                     />
@@ -482,14 +453,14 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                 </>
               )}
 
-              {calendarSource === 'google' && !isGoogleSignedIn && (
+              {calendarSource === 'google' && !googleAuth.accessToken && (
                 <Grid item xs={12}>
                   <Button
                     variant="contained"
                     onClick={handleGoogleSignIn}
                     disabled={
                       googleConnectionStatus === 'authenticating' ||
-                      !googleClientId
+                      !googleAuth.clientId
                     }
                     color="primary"
                   >
@@ -505,7 +476,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                 </Grid>
               )}
 
-              {calendarSource === 'google' && isGoogleSignedIn && (
+              {calendarSource === 'google' && googleAuth.accessToken && (
                 <>
                   <Grid item xs={12}>
                     <Alert severity="success" sx={{ mb: 2 }}>
@@ -519,8 +490,10 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                         </InputLabel>
                         <Select
                           labelId="calendar-select-label"
-                          value={googleCalendarId || 'primary'}
-                          onChange={(e) => setGoogleCalendarId(e.target.value)}
+                          value={googleAuth.calendarId || 'primary'}
+                          onChange={(e) =>
+                            setGoogleAuth({ calendarId: e.target.value })
+                          }
                           label="Calendario a usar"
                         >
                           <MenuItem value="primary">
@@ -576,7 +549,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
               fullWidth
               label="API Key de Calendarific"
               type="password"
-              value={calendarificApiKey}
+              value={calendarificApiKey || ''}
               onChange={(e) => setCalendarificApiKey(e.target.value)}
               placeholder="1234567890abcdef..."
               helperText="Opcional: Para obtener feriados actualizados. Si no se configura, se usarán feriados predeterminados."
@@ -594,23 +567,31 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                 <FormControlLabel
                   control={
                     <Checkbox
-                      checked={autoLogoutEnabled}
-                      onChange={(e) => setAutoLogoutEnabled(e.target.checked)}
+                      checked={securitySettings.autoLogoutEnabled}
+                      onChange={(e) =>
+                        setSecuritySettings({
+                          ...securitySettings,
+                          autoLogoutEnabled: e.target.checked,
+                        })
+                      }
                     />
                   }
                   label="Habilitar cierre de sesión automático"
                 />
               </Grid>
 
-              {autoLogoutEnabled && (
+              {securitySettings.autoLogoutEnabled && (
                 <Grid item xs={12} sm={6}>
                   <TextField
                     fullWidth
                     label="Timeout de sesión (minutos)"
                     type="number"
-                    value={sessionTimeout}
+                    value={securitySettings.sessionTimeoutMinutes}
                     onChange={(e) =>
-                      setSessionTimeout(parseInt(e.target.value) || 480)
+                      setSecuritySettings({
+                        ...securitySettings,
+                        sessionTimeoutMinutes: parseInt(e.target.value) || 480,
+                      })
                     }
                     inputProps={{ min: 30, max: 1440, step: 30 }}
                     helperText="Tiempo antes de cerrar sesión automáticamente (30-1440 min)"

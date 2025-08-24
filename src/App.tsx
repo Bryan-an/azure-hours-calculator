@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import {
   ThemeProvider,
   CssBaseline,
@@ -13,35 +13,60 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import { TaskCalculator } from './components/TaskCalculator';
 import { SettingsDialog } from './components/SettingsDialog';
 import { ElectronTitleBar } from './components/ElectronTitleBar';
-import { WorkSchedule } from './types';
-import { StorageUtil } from './utils/storage';
+import { ZustandDemo } from './components/ZustandDemo';
 import { darkTheme } from './theme';
+import { useSettingsStore } from './stores/settingsStore';
+import { useUIStore } from './stores/uiStore';
+import { initializeStores } from './stores';
 
 function App() {
-  const [workSchedule, setWorkSchedule] = useState<WorkSchedule>(
-    StorageUtil.getDefaultWorkSchedule()
+  // Zustand stores
+  const updateLastActivity = useSettingsStore(
+    (state) => state.updateLastActivity
   );
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const clearExpiredSession = useSettingsStore(
+    (state) => state.clearExpiredSession
+  );
+
+  const settingsOpen = useUIStore((state) => state.settingsOpen);
+  const setSettingsOpen = useUIStore((state) => state.setSettingsOpen);
 
   // Detectar si estamos en Electron
   const isElectron = !!(window as any).require;
 
   useEffect(() => {
-    // Cargar configuración guardada al inicio
-    const savedSchedule = StorageUtil.loadWorkSchedule();
-    if (savedSchedule) {
-      setWorkSchedule(savedSchedule);
-    }
+    // Initialize Zustand stores
+    initializeStores();
 
     // Configurar clase CSS para Electron
     if (isElectron) {
       document.body.classList.add('electron-app');
     }
-  }, [isElectron]);
 
-  const handleWorkScheduleChange = (newSchedule: WorkSchedule) => {
-    setWorkSchedule(newSchedule);
-  };
+    // Set up activity tracking for security
+    const handleActivity = () => {
+      updateLastActivity();
+    };
+
+    // Track user activity for security purposes
+    const events = [
+      'mousedown',
+      'mousemove',
+      'keypress',
+      'scroll',
+      'touchstart',
+    ];
+    events.forEach((event) => {
+      document.addEventListener(event, handleActivity, true);
+    });
+
+    // Cleanup event listeners
+    return () => {
+      events.forEach((event) => {
+        document.removeEventListener(event, handleActivity, true);
+      });
+    };
+  }, [isElectron, updateLastActivity, clearExpiredSession]);
 
   return (
     <ThemeProvider theme={darkTheme}>
@@ -96,15 +121,14 @@ function App() {
               </Typography>
             </Box>
 
-            <TaskCalculator workSchedule={workSchedule} />
+            <ZustandDemo />
+            <TaskCalculator />
           </Container>
         </div>
 
         <SettingsDialog
           open={settingsOpen}
           onClose={() => setSettingsOpen(false)}
-          workSchedule={workSchedule}
-          onWorkScheduleChange={handleWorkScheduleChange}
         />
       </div>
     </ThemeProvider>
