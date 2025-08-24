@@ -57,6 +57,8 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
   const [googleConnectionStatus, setGoogleConnectionStatus] = useState<'idle' | 'testing' | 'success' | 'error' | 'authenticating'>('idle');
   const [availableCalendars, setAvailableCalendars] = useState<Array<{id: string, summary: string}>>([]);
   const [isGoogleSignedIn, setIsGoogleSignedIn] = useState(false);
+  const [sessionTimeout, setSessionTimeout] = useState<number>(480);
+  const [autoLogoutEnabled, setAutoLogoutEnabled] = useState<boolean>(true);
 
   useEffect(() => {
     if (open) {
@@ -66,7 +68,13 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
       setGoogleCalendarId(StorageUtil.loadGoogleCalendarId() || '');
       setCalendarificApiKey(StorageUtil.loadCalendarificApiKey() || '');
       
-      // Check if user is signed in to Google
+      // Load security settings
+      const securitySettings = StorageUtil.loadSecuritySettings();
+      setSessionTimeout(securitySettings.sessionTimeoutMinutes);
+      setAutoLogoutEnabled(securitySettings.autoLogoutEnabled);
+      
+      // Check if user is signed in to Google and session is not expired
+      StorageUtil.clearExpiredSession();
       setIsGoogleSignedIn(!!StorageUtil.loadGoogleAccessToken());
       
       // Load available calendars if already authenticated
@@ -179,6 +187,13 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
     StorageUtil.saveGoogleAccessToken(googleAccessToken);
     StorageUtil.saveGoogleCalendarId(googleCalendarId);
     StorageUtil.saveCalendarificApiKey(calendarificApiKey);
+
+    // Save security settings
+    StorageUtil.saveSecuritySettings({
+      sessionTimeoutMinutes: sessionTimeout,
+      lastActivityTimestamp: Date.now(),
+      autoLogoutEnabled: autoLogoutEnabled
+    });
 
     onClose();
   };
@@ -394,6 +409,47 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
               placeholder="1234567890abcdef..."
               helperText="Opcional: Para obtener feriados actualizados. Si no se configura, se usarán feriados predeterminados."
             />
+
+            <Divider sx={{ my: 3 }} />
+
+            {/* Configuración de Seguridad */}
+            <Typography variant="h6" gutterBottom>
+              Configuración de Seguridad
+            </Typography>
+
+            <Grid container spacing={2}>
+              <Grid item xs={12}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={autoLogoutEnabled}
+                      onChange={(e) => setAutoLogoutEnabled(e.target.checked)}
+                    />
+                  }
+                  label="Habilitar cierre de sesión automático"
+                />
+              </Grid>
+              
+              {autoLogoutEnabled && (
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Timeout de sesión (minutos)"
+                    type="number"
+                    value={sessionTimeout}
+                    onChange={(e) => setSessionTimeout(parseInt(e.target.value) || 480)}
+                    inputProps={{ min: 30, max: 1440, step: 30 }}
+                    helperText="Tiempo antes de cerrar sesión automáticamente (30-1440 min)"
+                  />
+                </Grid>
+              )}
+              
+              <Grid item xs={12}>
+                <Alert severity="info" sx={{ mt: 1 }}>
+                  🛡️ Los eventos de seguridad se registran localmente para auditoría corporativa
+                </Alert>
+              </Grid>
+            </Grid>
           </Box>
         </DialogContent>
         <DialogActions>

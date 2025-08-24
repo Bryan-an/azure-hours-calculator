@@ -6,24 +6,101 @@ const GOOGLE_CALENDAR_API_BASE_URL = 'https://www.googleapis.com/calendar/v3';
 export interface GoogleAuthConfig {
   accessToken: string;
   calendarId?: string;
+  refreshToken?: string;
+  expiresAt?: number;
 }
 
 export class GoogleCalendarService {
   private accessToken: string;
   private calendarId: string;
+  private refreshToken?: string;
+  private expiresAt?: number;
 
   constructor(config: GoogleAuthConfig) {
     this.accessToken = config.accessToken;
     this.calendarId = config.calendarId || 'primary';
+    this.refreshToken = config.refreshToken;
+    this.expiresAt = config.expiresAt;
+  }
+
+  private async ensureValidToken(): Promise<void> {
+    if (!this.expiresAt) return;
+    
+    const now = Date.now();
+    const bufferTime = 5 * 60 * 1000; // 5 minutes buffer
+    
+    if (now + bufferTime >= this.expiresAt) {
+      await this.refreshAccessToken();
+    }
+  }
+
+  private async refreshAccessToken(): Promise<void> {
+    if (!this.refreshToken) {
+      throw new Error('No refresh token available. Re-authentication required.');
+    }
+
+    try {
+      // Note: This would require implementing token refresh endpoint
+      // For now, we'll log the attempt and clear tokens for re-auth
+      console.warn('Token refresh needed. Please re-authenticate.');
+      this.logSecurityEvent('token_refresh_attempted', { 
+        timestamp: new Date().toISOString(),
+        reason: 'token_expired'
+      });
+      
+      // Clear expired tokens to force re-authentication
+      const { StorageUtil } = await import('../utils/storage');
+      StorageUtil.clearGoogleAuth();
+      
+      throw new Error('Token expirado. Por favor, vuelve a autenticarte en Configuración.');
+    } catch (error) {
+      this.logSecurityEvent('token_refresh_failed', { 
+        error: error instanceof Error ? error.message : 'unknown',
+        timestamp: new Date().toISOString()
+      });
+      throw error;
+    }
+  }
+
+  private logSecurityEvent(event: string, details: Record<string, any>): void {
+    const logEntry = {
+      timestamp: new Date().toISOString(),
+      event,
+      details: {
+        ...details,
+        userAgent: navigator.userAgent,
+        calendarId: this.calendarId,
+      }
+    };
+    
+    // Store in localStorage for audit trail
+    const existingLogs = JSON.parse(localStorage.getItem('google_calendar_audit_log') || '[]');
+    existingLogs.push(logEntry);
+    
+    // Keep only last 100 entries
+    const recentLogs = existingLogs.slice(-100);
+    localStorage.setItem('google_calendar_audit_log', JSON.stringify(recentLogs));
+    
+    // Also log to console for development
+    console.log(`[SECURITY] ${event}:`, logEntry);
   }
 
   async getEvents(startDate: Date, endDate: Date): Promise<Meeting[]> {
     if (!this.accessToken) {
+      this.logSecurityEvent('access_attempt_no_token', { 
+        dateRange: { start: startDate.toISOString(), end: endDate.toISOString() }
+      });
       console.warn('Google Calendar access token not configured');
       return [];
     }
 
     try {
+      await this.ensureValidToken();
+      
+      this.logSecurityEvent('calendar_access_start', {
+        dateRange: { start: startDate.toISOString(), end: endDate.toISOString() },
+        calendarId: this.calendarId
+      });
       const response = await axios.get(
         `${GOOGLE_CALENDAR_API_BASE_URL}/calendars/${this.calendarId}/events`,
         {
@@ -41,7 +118,7 @@ export class GoogleCalendarService {
         }
       );
 
-      return response.data.items.map((event: any): Meeting => {
+      const mappedEvents = response.data.items.map((event: any): Meeting => {
         // Handle all-day events and timed events
         const startDateTime = event.start.dateTime 
           ? new Date(event.start.dateTime)
@@ -69,9 +146,25 @@ export class GoogleCalendarService {
                          event.end.getMinutes() === 0;
         return !isAllDay;
       });
+
+      this.logSecurityEvent('calendar_access_success', {
+        eventsCount: response.data.items.length,
+        filteredEventsCount: mappedEvents.length
+      });
+
+      return mappedEvents;
     } catch (error) {
+      this.logSecurityEvent('calendar_access_error', {
+        error: error instanceof Error ? error.message : 'unknown',
+        isAxiosError: axios.isAxiosError(error),
+        status: axios.isAxiosError(error) ? error.response?.status : undefined
+      });
+      
       console.error('Error fetching events from Google Calendar:', error);
       if (axios.isAxiosError(error) && error.response?.status === 401) {
+        // Clear invalid token
+        const { StorageUtil } = await import('../utils/storage');
+        StorageUtil.clearGoogleAuth();
         throw new Error('Token de acceso de Google Calendar expirado o inválido');
       }
       return [];

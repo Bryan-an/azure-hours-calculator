@@ -64,8 +64,13 @@ export const TaskCalculator: React.FC<TaskCalculatorProps> = ({ workSchedule }) 
   };
 
   const loadEvents = async (startDate: Date, endDate: Date) => {
+    // Check and clear expired sessions
+    StorageUtil.clearExpiredSession();
+    StorageUtil.updateLastActivity();
+    
     const googleAccessToken = StorageUtil.loadGoogleAccessToken();
     const googleCalendarId = StorageUtil.loadGoogleCalendarId();
+    const tokenExpiresAt = StorageUtil.loadGoogleTokenExpiresAt();
 
     if (!googleAccessToken) {
       return [];
@@ -74,14 +79,16 @@ export const TaskCalculator: React.FC<TaskCalculatorProps> = ({ workSchedule }) 
     try {
       const googleService = new GoogleCalendarService({ 
         accessToken: googleAccessToken,
-        calendarId: googleCalendarId || 'primary'
+        calendarId: googleCalendarId || 'primary',
+        expiresAt: tokenExpiresAt || undefined
       });
       return await googleService.getEvents(startDate, endDate);
     } catch (error) {
       console.error('Error loading Google Calendar events:', error);
-      if (error instanceof Error && error.message.includes('Token')) {
+      if (error instanceof Error && (error.message.includes('Token') || error.message.includes('expirado'))) {
         // Access token might be expired
         StorageUtil.clearGoogleAuth();
+        setError('Sesión de Google Calendar expirada. Por favor, vuelve a autenticarte en Configuración.');
       }
       return [];
     }

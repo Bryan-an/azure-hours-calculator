@@ -5,8 +5,16 @@ const STORAGE_KEYS = {
   GOOGLE_CLIENT_ID: 'googleClientId',
   GOOGLE_ACCESS_TOKEN: 'googleAccessToken',
   GOOGLE_CALENDAR_ID: 'googleCalendarId',
+  GOOGLE_TOKEN_EXPIRES_AT: 'googleTokenExpiresAt',
   CALENDARIFIC_API_KEY: 'calendarificApiKey',
+  SECURITY_SETTINGS: 'securitySettings',
 } as const;
+
+interface SecuritySettings {
+  sessionTimeoutMinutes: number;
+  lastActivityTimestamp: number;
+  autoLogoutEnabled: boolean;
+}
 
 export class StorageUtil {
   static saveWorkSchedule(schedule: WorkSchedule): void {
@@ -59,9 +67,76 @@ export class StorageUtil {
     return localStorage.getItem(STORAGE_KEYS.GOOGLE_CALENDAR_ID);
   }
 
+  static saveGoogleTokenExpiresAt(expiresAt: number): void {
+    localStorage.setItem(STORAGE_KEYS.GOOGLE_TOKEN_EXPIRES_AT, expiresAt.toString());
+  }
+
+  static loadGoogleTokenExpiresAt(): number | null {
+    const stored = localStorage.getItem(STORAGE_KEYS.GOOGLE_TOKEN_EXPIRES_AT);
+    return stored ? parseInt(stored, 10) : null;
+  }
+
   static clearGoogleAuth(): void {
     localStorage.removeItem(STORAGE_KEYS.GOOGLE_ACCESS_TOKEN);
     localStorage.removeItem(STORAGE_KEYS.GOOGLE_CALENDAR_ID);
+    localStorage.removeItem(STORAGE_KEYS.GOOGLE_TOKEN_EXPIRES_AT);
+  }
+
+  // Security settings management
+  static getDefaultSecuritySettings(): SecuritySettings {
+    return {
+      sessionTimeoutMinutes: 480, // 8 hours default
+      lastActivityTimestamp: Date.now(),
+      autoLogoutEnabled: true,
+    };
+  }
+
+  static saveSecuritySettings(settings: SecuritySettings): void {
+    localStorage.setItem(STORAGE_KEYS.SECURITY_SETTINGS, JSON.stringify(settings));
+  }
+
+  static loadSecuritySettings(): SecuritySettings {
+    const stored = localStorage.getItem(STORAGE_KEYS.SECURITY_SETTINGS);
+    if (stored) {
+      try {
+        return { ...this.getDefaultSecuritySettings(), ...JSON.parse(stored) };
+      } catch (error) {
+        console.error('Error parsing security settings:', error);
+      }
+    }
+    return this.getDefaultSecuritySettings();
+  }
+
+  static updateLastActivity(): void {
+    const settings = this.loadSecuritySettings();
+    settings.lastActivityTimestamp = Date.now();
+    this.saveSecuritySettings(settings);
+  }
+
+  static isSessionExpired(): boolean {
+    const settings = this.loadSecuritySettings();
+    if (!settings.autoLogoutEnabled) return false;
+    
+    const now = Date.now();
+    const timeoutMs = settings.sessionTimeoutMinutes * 60 * 1000;
+    return (now - settings.lastActivityTimestamp) > timeoutMs;
+  }
+
+  static clearExpiredSession(): void {
+    if (this.isSessionExpired()) {
+      this.clearGoogleAuth();
+      // Log security event
+      console.warn('[SECURITY] Session expired and cleared');
+      const securityLog = {
+        event: 'session_expired',
+        timestamp: new Date().toISOString(),
+        details: { reason: 'timeout' }
+      };
+      
+      const existingLogs = JSON.parse(localStorage.getItem('security_events_log') || '[]');
+      existingLogs.push(securityLog);
+      localStorage.setItem('security_events_log', JSON.stringify(existingLogs.slice(-50)));
+    }
   }
 
   static saveCalendarificApiKey(apiKey: string): void {
