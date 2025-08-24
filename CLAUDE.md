@@ -174,6 +174,11 @@ const STORAGE_KEYS = {
 - **Fondo**: `#121212` (casi negro)
 - **Paper**: `#1e1e1e` (gris oscuro)
 
+### Estilo de Texto e Interfaz
+- **Sin emojis**: Evitar el uso de emojis en textos de la interfaz gráfica por profesionalismo
+- **Tono formal**: Mantener un lenguaje profesional y claro en todos los mensajes
+- **Mensajes concisos**: Texto directo sin elementos decorativos innecesarios
+
 ## 🧮 Lógica de Cálculo Principal
 
 ### DateCalculationsUtil.calculateEndDate()

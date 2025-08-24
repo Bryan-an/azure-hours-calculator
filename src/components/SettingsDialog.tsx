@@ -388,7 +388,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                   iCal URL Público
                 </Typography>
                 <Alert severity="info" sx={{ mb: 2 }}>
-                  💡 Alternativa simple que no requiere permisos corporativos. Solo necesitas la URL pública de tu calendario.
+                  Alternativa simple que no requiere permisos corporativos. Solo necesitas la URL pública de tu calendario.
                 </Alert>
               </>
             )}
@@ -428,12 +428,12 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                     </Button>
                     {icalConnectionStatus === 'success' && (
                       <Alert severity="success" sx={{ mt: 1 }}>
-                        ✅ Conexión exitosa con iCal
+                        Conexión exitosa con iCal
                       </Alert>
                     )}
                     {icalConnectionStatus === 'error' && (
                       <Alert severity="error" sx={{ mt: 1 }}>
-                        ❌ Error de conexión. Verifica que la URL sea accesible y válida.
+                        Error de conexión. Verifica que la URL sea accesible y válida.
                       </Alert>
                     )}
                   </Grid>
@@ -462,7 +462,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                 <>
                   <Grid item xs={12}>
                     <Alert severity="success" sx={{ mb: 2 }}>
-                      ✅ Conectado exitosamente a Google Calendar
+                      Conectado exitosamente a Google Calendar
                     </Alert>
                     
                     {availableCalendars.length > 0 && (
@@ -565,7 +565,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
               
               <Grid item xs={12}>
                 <Alert severity="info" sx={{ mt: 1 }}>
-                  🛡️ Los eventos de seguridad se registran localmente para auditoría corporativa
+                  Los eventos de seguridad se registran localmente para auditoría corporativa
                 </Alert>
               </Grid>
             </Grid>
