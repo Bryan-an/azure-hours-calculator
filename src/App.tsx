@@ -23,6 +23,7 @@ function App() {
   const updateLastActivity = useSettingsStore(
     (state) => state.updateLastActivity
   );
+
   const clearExpiredSession = useSettingsStore(
     (state) => state.clearExpiredSession
   );
@@ -55,6 +56,7 @@ function App() {
       'scroll',
       'touchstart',
     ];
+
     events.forEach((event) => {
       document.addEventListener(event, handleActivity, true);
     });
@@ -70,6 +72,7 @@ function App() {
   return (
     <ThemeProvider theme={darkTheme}>
       <CssBaseline />
+
       <div className="App">
         {/* Barra de título para Electron */}
         {isElectron && (
@@ -83,6 +86,7 @@ function App() {
               <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
                 Azure Hours Calculator
               </Typography>
+
               <IconButton
                 size="large"
                 edge="end"
@@ -108,6 +112,7 @@ function App() {
               >
                 Calculadora de Fechas para Azure DevOps
               </Typography>
+
               <Typography
                 variant="subtitle1"
                 color="text.secondary"
