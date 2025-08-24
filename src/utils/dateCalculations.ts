@@ -429,6 +429,7 @@ export class DateCalculationsUtil {
       excludeHolidays = true,
       excludeMeetings = true,
     } = params;
+
     const dailyWorkingMinutes = this.getDailyWorkingMinutes(schedule);
     let currentDate = new Date(startDate);
     let totalWorkingMinutes = 0;
@@ -448,12 +449,14 @@ export class DateCalculationsUtil {
 
       if (excludeMeetings) {
         const dayMeetings = this.getMeetingsForDay(currentDate, meetings);
+
         dayMeetings.forEach((meeting) => {
           if (!meeting.isOptional) {
             const meetingDuration = differenceInMinutes(
               meeting.end,
               meeting.start
             );
+
             dayWorkingMinutes -= meetingDuration;
           }
         });
