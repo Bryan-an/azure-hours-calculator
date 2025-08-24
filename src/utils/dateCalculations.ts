@@ -146,8 +146,22 @@ export class DateCalculationsUtil {
     excludeMeetings: boolean
   ): Date {
     if (!excludeMeetings) {
-      // Sin exclusión de reuniones, simplemente agregar el tiempo
-      return this.addMinutesToDate(startOfDay, minutesToWork);
+      // Sin exclusión de reuniones, pero sí excluir almuerzo
+      const workIntervals = this.getWorkIntervalsForDay(startOfDay, schedule, []);
+      let remainingMinutes = minutesToWork;
+
+      for (const interval of workIntervals) {
+        const intervalDuration = differenceInMinutes(interval.end, interval.start);
+        
+        if (remainingMinutes <= intervalDuration) {
+          return this.addMinutesToDate(interval.start, remainingMinutes);
+        } else {
+          remainingMinutes -= intervalDuration;
+        }
+      }
+
+      const lastInterval = workIntervals[workIntervals.length - 1];
+      return lastInterval ? lastInterval.end : this.addMinutesToDate(startOfDay, minutesToWork);
     }
 
     const dayMeetings = this.getMeetingsForDay(startOfDay, meetings)
