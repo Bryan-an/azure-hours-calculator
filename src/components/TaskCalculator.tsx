@@ -1,0 +1,330 @@
+import React, { useState, useEffect } from 'react';
+import {
+  Card,
+  CardContent,
+  Typography,
+  TextField,
+  Button,
+  Box,
+  Grid,
+  FormControlLabel,
+  Switch,
+  Alert,
+  CircularProgress,
+  Divider,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemIcon,
+  Chip,
+} from '@mui/material';
+import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { es } from 'date-fns/locale';
+import EventIcon from '@mui/icons-material/Event';
+import HolidayVillageIcon from '@mui/icons-material/HolidayVillage';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import { WorkSchedule, Holiday, Meeting, CalculationResult } from '../types';
+import { DateCalculationsUtil } from '../utils/dateCalculations';
+import { HolidayService } from '../services/holidayService';
+import { NotionService } from '../services/notionService';
+import { StorageUtil } from '../utils/storage';
+
+interface TaskCalculatorProps {
+  workSchedule: WorkSchedule;
+}
+
+export const TaskCalculator: React.FC<TaskCalculatorProps> = ({ workSchedule }) => {
+  const [estimatedHours, setEstimatedHours] = useState<string>('');
+  const [startDate, setStartDate] = useState<Date>(new Date());
+  const [excludeHolidays, setExcludeHolidays] = useState<boolean>(true);
+  const [excludeMeetings, setExcludeMeetings] = useState<boolean>(true);
+  const [isCalculating, setIsCalculating] = useState<boolean>(false);
+  const [result, setResult] = useState<CalculationResult | null>(null);
+  const [error, setError] = useState<string>('');
+  const [holidays, setHolidays] = useState<Holiday[]>([]);
+  const [meetings, setMeetings] = useState<Meeting[]>([]);
+
+  const holidayService = new HolidayService();
+
+  useEffect(() => {
+    loadHolidays();
+  }, []);
+
+  const loadHolidays = async () => {
+    try {
+      const currentYear = new Date().getFullYear();
+      const holidayList = await holidayService.getEcuadorHolidays(currentYear);
+      setHolidays(holidayList);
+    } catch (error) {
+      console.error('Error loading holidays:', error);
+    }
+  };
+
+  const loadMeetings = async (startDate: Date, endDate: Date) => {
+    const notionApiKey = StorageUtil.loadNotionApiKey();
+    const notionDatabaseId = StorageUtil.loadNotionDatabaseId();
+
+    if (!notionApiKey || !notionDatabaseId) {
+      return [];
+    }
+
+    try {
+      const notionService = new NotionService(notionApiKey, notionDatabaseId);
+      return await notionService.getMeetings(startDate, endDate);
+    } catch (error) {
+      console.error('Error loading meetings:', error);
+      return [];
+    }
+  };
+
+  const handleCalculate = async () => {
+    if (!estimatedHours || parseFloat(estimatedHours) <= 0) {
+      setError('Por favor ingresa un número válido de horas estimadas.');
+      return;
+    }
+
+    setIsCalculating(true);
+    setError('');
+    setResult(null);
+
+    try {
+      const hours = parseFloat(estimatedHours);
+      
+      // Primera estimación para determinar el rango de fechas para cargar reuniones
+      const preliminaryResult = DateCalculationsUtil.calculateEndDate(
+        startDate,
+        hours,
+        workSchedule,
+        excludeHolidays ? holidays : [],
+        [],
+        excludeHolidays,
+        false
+      );
+
+      // Cargar reuniones en el rango de fechas estimado
+      let meetingList: Meeting[] = [];
+      if (excludeMeetings) {
+        meetingList = await loadMeetings(startDate, preliminaryResult.endDate);
+        setMeetings(meetingList);
+      }
+
+      // Cálculo final con reuniones
+      const finalResult = DateCalculationsUtil.calculateEndDate(
+        startDate,
+        hours,
+        workSchedule,
+        excludeHolidays ? holidays : [],
+        meetingList,
+        excludeHolidays,
+        excludeMeetings
+      );
+
+      setResult(finalResult);
+    } catch (error) {
+      setError('Error al calcular las fechas. Por favor verifica la configuración.');
+      console.error('Calculation error:', error);
+    } finally {
+      setIsCalculating(false);
+    }
+  };
+
+  const handleReset = () => {
+    setEstimatedHours('');
+    setStartDate(new Date());
+    setResult(null);
+    setError('');
+    setMeetings([]);
+  };
+
+  const getDailyWorkingHours = () => {
+    const minutes = DateCalculationsUtil.getDailyWorkingMinutes(workSchedule);
+    return (minutes / 60).toFixed(1);
+  };
+
+  return (
+    <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={es}>
+      <Card>
+        <CardContent>
+          <Typography variant="h5" component="h2" gutterBottom>
+            Calculadora de Fechas - Azure DevOps
+          </Typography>
+
+          <Alert severity="info" sx={{ mb: 3 }}>
+            Horas laborales configuradas: {getDailyWorkingHours()} horas por día ({workSchedule.startTime} - {workSchedule.endTime})
+          </Alert>
+
+          <Grid container spacing={3}>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Horas estimadas"
+                type="number"
+                value={estimatedHours}
+                onChange={(e) => setEstimatedHours(e.target.value)}
+                inputProps={{ 
+                  step: 0.25, 
+                  min: 0.25,
+                  placeholder: "8.5" 
+                }}
+                helperText="Ingresa las horas decimales estimadas (ej: 8.5)"
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <DateTimePicker
+                label="Fecha y hora de inicio"
+                value={startDate}
+                onChange={(newValue) => newValue && setStartDate(newValue)}
+                slots={{
+                  textField: (params) => <TextField {...params} fullWidth />,
+                }}
+                ampm={false}
+              />
+            </Grid>
+          </Grid>
+
+          <Box sx={{ mt: 3, mb: 2 }}>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={excludeHolidays}
+                  onChange={(e) => setExcludeHolidays(e.target.checked)}
+                />
+              }
+              label="Excluir feriados ecuatorianos"
+            />
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={excludeMeetings}
+                  onChange={(e) => setExcludeMeetings(e.target.checked)}
+                />
+              }
+              label="Excluir tiempo de reuniones (Notion)"
+            />
+          </Box>
+
+          <Box sx={{ mt: 3, mb: 2 }}>
+            <Button
+              variant="contained"
+              onClick={handleCalculate}
+              disabled={isCalculating || !estimatedHours}
+              startIcon={isCalculating ? <CircularProgress size={20} /> : <AccessTimeIcon />}
+              sx={{ mr: 2 }}
+            >
+              {isCalculating ? 'Calculando...' : 'Calcular Fechas'}
+            </Button>
+            <Button variant="outlined" onClick={handleReset}>
+              Limpiar
+            </Button>
+          </Box>
+
+          {error && (
+            <Alert severity="error" sx={{ mt: 2 }}>
+              {error}
+            </Alert>
+          )}
+
+          {result && (
+            <Card variant="outlined" sx={{ mt: 3 }}>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>
+                  <CheckCircleIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+                  Resultado del Cálculo
+                </Typography>
+                
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="body2" color="text.secondary">
+                      Fecha de inicio:
+                    </Typography>
+                    <Typography variant="h6">
+                      {DateCalculationsUtil.formatDateForDisplay(result.startDate)}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="body2" color="text.secondary">
+                      Fecha estimada de finalización:
+                    </Typography>
+                    <Typography variant="h6">
+                      {DateCalculationsUtil.formatDateForDisplay(result.endDate)}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="body2" color="text.secondary">
+                      Días laborales utilizados:
+                    </Typography>
+                    <Typography variant="h6">
+                      {result.workingDays} días
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="body2" color="text.secondary">
+                      Horas de trabajo efectivas:
+                    </Typography>
+                    <Typography variant="h6">
+                      {result.actualWorkingHours.toFixed(2)} horas
+                    </Typography>
+                  </Grid>
+                </Grid>
+
+                {result.holidaysExcluded.length > 0 && (
+                  <Box sx={{ mt: 3 }}>
+                    <Divider sx={{ mb: 2 }} />
+                    <Typography variant="subtitle1" gutterBottom>
+                      <HolidayVillageIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+                      Feriados Excluidos ({result.holidaysExcluded.length})
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                      {result.holidaysExcluded.map((holiday, index) => (
+                        <Chip
+                          key={index}
+                          label={`${DateCalculationsUtil.formatDateOnly(new Date(holiday.date))} - ${holiday.name}`}
+                          size="small"
+                          variant="outlined"
+                          color="warning"
+                        />
+                      ))}
+                    </Box>
+                  </Box>
+                )}
+
+                {result.meetingsExcluded.length > 0 && (
+                  <Box sx={{ mt: 3 }}>
+                    <Divider sx={{ mb: 2 }} />
+                    <Typography variant="subtitle1" gutterBottom>
+                      <EventIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+                      Reuniones Excluidas ({result.meetingsExcluded.length})
+                    </Typography>
+                    <List dense>
+                      {result.meetingsExcluded.slice(0, 5).map((meeting, index) => (
+                        <ListItem key={index}>
+                          <ListItemIcon>
+                            <EventIcon fontSize="small" />
+                          </ListItemIcon>
+                          <ListItemText
+                            primary={meeting.title}
+                            secondary={`${DateCalculationsUtil.formatDateForDisplay(meeting.start)} - ${DateCalculationsUtil.formatDateForDisplay(meeting.end)}`}
+                          />
+                        </ListItem>
+                      ))}
+                      {result.meetingsExcluded.length > 5 && (
+                        <ListItem>
+                          <ListItemText
+                            secondary={`... y ${result.meetingsExcluded.length - 5} reuniones más`}
+                          />
+                        </ListItem>
+                      )}
+                    </List>
+                  </Box>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </CardContent>
+      </Card>
+    </LocalizationProvider>
+  );
+};
