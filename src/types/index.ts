@@ -29,6 +29,7 @@ export interface TaskCalculation {
   excludeHolidays: boolean;
   excludeMeetings: boolean;
   excludedMeetingIds?: string[]; // IDs de eventos específicamente excluidos
+  excludedHolidayDates?: string[]; // Fechas de feriados específicamente excluidos (formato: "YYYY-MM-DD")
   holidays: Holiday[];
   meetings: Meeting[];
 }

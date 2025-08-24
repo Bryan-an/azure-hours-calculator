@@ -20,6 +20,7 @@ import {
 } from '@mui/material';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { EventSelectionDialog } from './EventSelectionDialog';
+import { HolidaySelectionDialog } from './HolidaySelectionDialog';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { es } from 'date-fns/locale';
@@ -44,12 +45,14 @@ export const TaskCalculator: React.FC<TaskCalculatorProps> = ({ workSchedule }) 
   const [excludeHolidays, setExcludeHolidays] = useState<boolean>(true);
   const [excludeMeetings, setExcludeMeetings] = useState<boolean>(true);
   const [excludedMeetingIds, setExcludedMeetingIds] = useState<string[]>([]);
+  const [excludedHolidayDates, setExcludedHolidayDates] = useState<string[]>([]);
   const [isCalculating, setIsCalculating] = useState<boolean>(false);
   const [result, setResult] = useState<CalculationResult | null>(null);
   const [error, setError] = useState<string>('');
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [eventSelectionDialogOpen, setEventSelectionDialogOpen] = useState<boolean>(false);
+  const [holidaySelectionDialogOpen, setHolidaySelectionDialogOpen] = useState<boolean>(false);
 
   const holidayService = new HolidayService();
 
@@ -177,14 +180,27 @@ export const TaskCalculator: React.FC<TaskCalculatorProps> = ({ workSchedule }) 
       }
       // Si excludeMeetings es false, effectiveMeetings queda vacío (no excluir nada)
 
-      // Cálculo final con eventos de calendario
+      // Filtrar holidays basado en la selección granular
+      let effectiveHolidays: Holiday[] = [];
+      if (excludeHolidays) {
+        if (excludedHolidayDates.length > 0) {
+          // Exclusión granular: solo excluir los feriados específicamente seleccionados
+          effectiveHolidays = holidays.filter(h => excludedHolidayDates.includes(h.date));
+        } else {
+          // Exclusión completa: excluir todos los feriados
+          effectiveHolidays = holidays;
+        }
+      }
+      // Si excludeHolidays es false, effectiveHolidays queda vacío (no excluir nada)
+
+      // Cálculo final con eventos de calendario y feriados
       const finalResult = DateCalculationsUtil.calculateEndDate(
         startDate,
         hours,
         workSchedule,
-        excludeHolidays ? holidays : [],
+        effectiveHolidays,
         effectiveMeetings,
-        excludeHolidays,
+        effectiveHolidays.length > 0,
         true // Siempre true cuando hay meetings a excluir
       );
 
@@ -233,6 +249,38 @@ export const TaskCalculator: React.FC<TaskCalculatorProps> = ({ workSchedule }) 
     if (!checked) {
       // Limpiar selección granular cuando se desactiva la exclusión
       setExcludedMeetingIds([]);
+    }
+  };
+
+  const handleHolidaySelectionChange = (newExcludeHolidays: boolean, newExcludedDates: string[]) => {
+    setExcludeHolidays(newExcludeHolidays);
+    setExcludedHolidayDates(newExcludedDates);
+  };
+
+  const handleMainExcludeHolidaysChange = (checked: boolean) => {
+    setExcludeHolidays(checked);
+    if (!checked) {
+      // Limpiar selección granular cuando se desactiva la exclusión
+      setExcludedHolidayDates([]);
+    }
+  };
+
+  const handleOpenHolidaySelection = () => {
+    setHolidaySelectionDialogOpen(true);
+  };
+
+  const getHolidaySelectionLabel = () => {
+    if (!excludeHolidays) return 'Incluir feriados ecuatorianos';
+    
+    const totalHolidays = holidays.length;
+    if (totalHolidays === 0) return 'Excluir feriados ecuatorianos';
+    
+    if (excludedHolidayDates.length === 0) {
+      return 'Excluir todos los feriados ecuatorianos';
+    } else if (excludedHolidayDates.length === totalHolidays) {
+      return 'Excluir todos los feriados ecuatorianos';
+    } else {
+      return `Excluir ${excludedHolidayDates.length} de ${totalHolidays} feriados ecuatorianos`;
     }
   };
 
@@ -300,15 +348,27 @@ export const TaskCalculator: React.FC<TaskCalculatorProps> = ({ workSchedule }) 
           </Grid>
 
           <Box sx={{ mt: 3, mb: 2 }}>
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={excludeHolidays}
-                  onChange={(e) => setExcludeHolidays(e.target.checked)}
-                />
-              }
-              label="Excluir feriados ecuatorianos"
-            />
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={excludeHolidays}
+                    onChange={(e) => handleMainExcludeHolidaysChange(e.target.checked)}
+                  />
+                }
+                label={getHolidaySelectionLabel()}
+                sx={{ flexGrow: 1 }}
+              />
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={handleOpenHolidaySelection}
+                disabled={!excludeHolidays}
+                sx={{ ml: 2, minWidth: 'auto', textTransform: 'none' }}
+              >
+                Configurar
+              </Button>
+            </Box>
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <FormControlLabel
                 control={
@@ -461,6 +521,16 @@ export const TaskCalculator: React.FC<TaskCalculatorProps> = ({ workSchedule }) 
         excludedMeetingIds={excludedMeetingIds}
         onSelectionChange={handleEventSelectionChange}
         calendarSource={getCalendarSourceLabel()}
+      />
+
+      {/* Diálogo de selección granular de feriados */}
+      <HolidaySelectionDialog
+        open={holidaySelectionDialogOpen}
+        onClose={() => setHolidaySelectionDialogOpen(false)}
+        holidays={holidays}
+        excludeHolidays={excludeHolidays}
+        excludedHolidayDates={excludedHolidayDates}
+        onSelectionChange={handleHolidaySelectionChange}
       />
     </LocalizationProvider>
   );
