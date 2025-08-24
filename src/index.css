@@ -59,3 +59,20 @@ label,
 .MuiButtonBase-root {
   -webkit-app-region: no-drag !important;
 }
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Focus visibility mejorada para accesibilidad */
+*:focus-visible {
+  outline: 2px solid #90caf9;
+  outline-offset: 2px;
+}
+
+/* Colores de selección personalizados */
+::selection {
+  background-color: #90caf9;
+  color: #121212;
+}
