@@ -11,9 +11,11 @@ interface PreferencesState {
   // Actions
   setSidebarCollapsed: (collapsed: boolean) => void;
   setDarkMode: (darkMode: boolean) => void;
+
   setPreferredDateFormat: (
     format: 'MM/dd/yyyy' | 'dd/MM/yyyy' | 'auto'
   ) => void;
+
   setDefaultCalculationView: (view: 'simple' | 'detailed') => void;
   resetPreferences: () => void;
 }
