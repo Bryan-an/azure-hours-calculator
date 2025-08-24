@@ -240,8 +240,10 @@ export const TaskCalculator: React.FC<TaskCalculatorProps> = ({ workSchedule }) 
                 label="Fecha y hora de inicio"
                 value={startDate}
                 onChange={(newValue) => newValue && setStartDate(newValue)}
-                slots={{
-                  textField: (params) => <TextField {...params} fullWidth />,
+                slotProps={{
+                  textField: { 
+                    fullWidth: true 
+                  }
                 }}
                 ampm={false}
               />

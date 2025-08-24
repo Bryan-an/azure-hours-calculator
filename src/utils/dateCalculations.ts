@@ -41,6 +41,8 @@ export class DateCalculationsUtil {
     const totalMinutesNeeded = estimatedHours * 60;
     
     let currentDate = new Date(startDate);
+    // Normalizar segundos y milisegundos para evitar desajustes
+    currentDate.setSeconds(0, 0);
     let remainingMinutes = totalMinutesNeeded;
     let workingDays = 0;
     const holidaysExcluded: Holiday[] = [];
@@ -141,6 +143,7 @@ export class DateCalculationsUtil {
       if (remainingMinutes <= availableMinutesInDay) {
         // Termina en este día - calcular el tiempo final considerando interrupciones
         const endTime = this.calculateEndTimeWithMeetings(currentDate, remainingMinutes, schedule, meetings, excludeMeetings);
+        
         remainingMinutes = 0;
         
         return {
@@ -191,7 +194,7 @@ export class DateCalculationsUtil {
   ): Date {
     if (!excludeMeetings) {
       // Sin exclusión de reuniones, pero sí excluir almuerzo
-      const workIntervals = this.getWorkIntervalsForDay(startOfDay, schedule, []);
+      const workIntervals = this.getWorkIntervalsForDay(startOfDay, schedule, [], startOfDay);
       let remainingMinutes = minutesToWork;
 
       for (const interval of workIntervals) {
@@ -215,7 +218,7 @@ export class DateCalculationsUtil {
     let remainingMinutes = minutesToWork;
 
     // Crear intervalos de trabajo disponibles considerando reuniones y almuerzo
-    const workIntervals = this.getWorkIntervalsForDay(startOfDay, schedule, dayMeetings);
+    const workIntervals = this.getWorkIntervalsForDay(startOfDay, schedule, dayMeetings, startOfDay);
 
     for (const interval of workIntervals) {
       const intervalDuration = differenceInMinutes(interval.end, interval.start);
@@ -238,15 +241,18 @@ export class DateCalculationsUtil {
   private static getWorkIntervalsForDay(
     date: Date,
     schedule: WorkSchedule,
-    meetings: Meeting[]
+    meetings: Meeting[],
+    actualStartTime?: Date
   ): Array<{ start: Date; end: Date }> {
     const [startHour, startMinute] = schedule.startTime.split(':').map(Number);
     const [endHour, endMinute] = schedule.endTime.split(':').map(Number);
     const [lunchStartHour, lunchStartMinute] = schedule.lunchStart.split(':').map(Number);
     const [lunchEndHour, lunchEndMinute] = schedule.lunchEnd.split(':').map(Number);
 
-    const dayStart = new Date(date);
-    dayStart.setHours(startHour, startMinute, 0, 0);
+    const dayStart = actualStartTime ? new Date(actualStartTime) : new Date(date);
+    if (!actualStartTime) {
+      dayStart.setHours(startHour, startMinute, 0, 0);
+    }
 
     const dayEnd = new Date(date);
     dayEnd.setHours(endHour, endMinute, 0, 0);
