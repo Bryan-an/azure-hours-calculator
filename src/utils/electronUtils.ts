@@ -11,6 +11,7 @@ export const electronUtils = {
     try {
       const require = (window as unknown as Record<string, unknown>)
         .require as (module: string) => any;
+
       const { remote } = require('electron');
       return remote?.getCurrentWindow() || null;
     } catch {
@@ -18,7 +19,9 @@ export const electronUtils = {
       try {
         const require = (window as unknown as Record<string, unknown>)
           .require as (module: string) => any;
+
         const { ipcRenderer } = require('electron');
+
         return {
           maximize: () => ipcRenderer.invoke('window-maximize'),
           unmaximize: () => ipcRenderer.invoke('window-unmaximize'),
@@ -67,6 +70,7 @@ export const electronUtils = {
       if (typeof currentWindow.isMaximized === 'function') {
         return await currentWindow.isMaximized();
       }
+
       return false;
     } catch (error) {
       console.error('Error al verificar estado de ventana:', error);
@@ -77,6 +81,7 @@ export const electronUtils = {
   toggleMaximize: async (): Promise<void> => {
     try {
       const isMaximized = await electronUtils.isWindowMaximized();
+
       if (isMaximized) {
         await electronUtils.unmaximizeWindow();
       } else {
