@@ -45,16 +45,21 @@ export class DateCalculationsUtil {
     let workingDays = 0;
     const holidaysExcluded: Holiday[] = [];
     const meetingsExcluded: Meeting[] = [];
+    let isFirstDay = true;
 
-    // Establecer hora de inicio del día laboral
+    // Configuración del horario laboral
     const [startHour, startMinute] = schedule.startTime.split(':').map(Number);
-    currentDate.setHours(startHour, startMinute, 0, 0);
 
     while (remainingMinutes > 0) {
+      // Para días subsecuentes, establecer hora de inicio del horario laboral
+      if (!isFirstDay) {
+        currentDate.setHours(startHour, startMinute, 0, 0);
+      }
+
       // Verificar si es día laboral
       if (!this.isWorkingDay(currentDate, schedule)) {
         currentDate = addDays(currentDate, 1);
-        currentDate.setHours(startHour, startMinute, 0, 0);
+        isFirstDay = false;
         continue;
       }
 
@@ -64,7 +69,7 @@ export class DateCalculationsUtil {
         if (holiday) {
           holidaysExcluded.push(holiday);
           currentDate = addDays(currentDate, 1);
-          currentDate.setHours(startHour, startMinute, 0, 0);
+          isFirstDay = false;
           continue;
         }
       }
@@ -72,7 +77,39 @@ export class DateCalculationsUtil {
       workingDays++;
 
       // Calcular minutos disponibles en el día actual
-      let availableMinutesInDay = dailyWorkingMinutes;
+      let availableMinutesInDay: number;
+      
+      if (isFirstDay) {
+        // En el primer día, calcular desde la hora de inicio hasta el final del día laboral
+        const endOfWorkDay = new Date(currentDate);
+        const [endHour, endMinute] = schedule.endTime.split(':').map(Number);
+        endOfWorkDay.setHours(endHour, endMinute, 0, 0);
+        
+        // Calcular minutos totales desde hora de inicio hasta final del día
+        const totalMinutesFromStart = differenceInMinutes(endOfWorkDay, currentDate);
+        
+        // Restar almuerzo si está dentro del período
+        const [lunchStartHour, lunchStartMinute] = schedule.lunchStart.split(':').map(Number);
+        const [lunchEndHour, lunchEndMinute] = schedule.lunchEnd.split(':').map(Number);
+        
+        const lunchStart = new Date(currentDate);
+        lunchStart.setHours(lunchStartHour, lunchStartMinute, 0, 0);
+        
+        const lunchEnd = new Date(currentDate);
+        lunchEnd.setHours(lunchEndHour, lunchEndMinute, 0, 0);
+        
+        let lunchMinutesToSubtract = 0;
+        if (currentDate < lunchEnd) {
+          // El almuerzo está después de la hora de inicio
+          const lunchStartTime = currentDate < lunchStart ? lunchStart : currentDate;
+          lunchMinutesToSubtract = differenceInMinutes(lunchEnd, lunchStartTime);
+        }
+        
+        availableMinutesInDay = totalMinutesFromStart - lunchMinutesToSubtract;
+      } else {
+        // En días completos, usar el cálculo normal
+        availableMinutesInDay = dailyWorkingMinutes;
+      }
 
       // Restar tiempo de reuniones si está habilitado
       if (excludeMeetings) {
@@ -80,6 +117,13 @@ export class DateCalculationsUtil {
         dayMeetings.forEach(meeting => {
           if (!meeting.isOptional) {
             const meetingDuration = differenceInMinutes(meeting.end, meeting.start);
+            
+            // Solo restar reuniones que ocurren después de la hora de inicio actual
+            if (isFirstDay && meeting.start < currentDate) {
+              // Si la reunión ya pasó, no restarla
+              return;
+            }
+            
             availableMinutesInDay -= meetingDuration;
             meetingsExcluded.push(meeting);
           }
@@ -89,7 +133,7 @@ export class DateCalculationsUtil {
       // Si hay minutos negativos en el día, pasar al siguiente día
       if (availableMinutesInDay <= 0) {
         currentDate = addDays(currentDate, 1);
-        currentDate.setHours(startHour, startMinute, 0, 0);
+        isFirstDay = false;
         continue;
       }
 
@@ -111,7 +155,7 @@ export class DateCalculationsUtil {
         // Usar todo el día y continuar
         remainingMinutes -= availableMinutesInDay;
         currentDate = addDays(currentDate, 1);
-        currentDate.setHours(startHour, startMinute, 0, 0);
+        isFirstDay = false;
       }
     }
 
