@@ -133,13 +133,13 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
 
   const handleGoogleSignIn = async () => {
     if (!googleClientId || !googleClientId.trim()) {
-      alert('Por favor ingresa tu Google Client ID antes de autenticar.');
+      setGoogleConnectionStatus('error');
       return;
     }
 
     const trimmedClientId = googleClientId.trim();
     if (!validateGoogleClientId(trimmedClientId)) {
-      alert('El formato del Client ID parece incorrecto. Debe ser como: 123456789-abc123def.apps.googleusercontent.com');
+      setGoogleConnectionStatus('error');
       return;
     }
 
@@ -147,17 +147,11 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
     
     try {
       GoogleAuthHelper.setClientId(googleClientId.trim());
-      
-      // Run diagnosis before attempting to sign in
-      console.log('Running Google API diagnosis before sign-in...');
-      GoogleAuthHelper.diagnoseGoogleAPI();
-      
       const accessToken = await GoogleAuthHelper.signIn();
       
       setGoogleAccessToken(accessToken);
       setIsGoogleSignedIn(true);
       
-      // Test connection and load calendars
       const googleService = new GoogleCalendarService({ accessToken });
       const isConnected = await googleService.testConnection();
       
@@ -166,15 +160,10 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
         await loadAvailableCalendars();
       } else {
         setGoogleConnectionStatus('error');
-        alert('No se pudo conectar con Google Calendar. Verifica los permisos de tu aplicación.');
       }
     } catch (error: any) {
       console.error('Google sign-in error:', error);
       setGoogleConnectionStatus('error');
-      
-      // Show specific error message to user
-      const errorMessage = error.message || 'Error de autenticación desconocido';
-      alert(`Error de autenticación: ${errorMessage}`);
     }
   };
 

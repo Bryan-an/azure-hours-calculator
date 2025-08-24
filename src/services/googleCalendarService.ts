@@ -249,25 +249,13 @@ export class GoogleAuthHelper {
   }
 
   static diagnoseGoogleAPI(): void {
-    console.log('=== Google API Diagnosis (GIS) ===');
-    console.log('Client ID configured:', !!this.CLIENT_ID);
-    console.log('Client ID value:', this.CLIENT_ID ? `${this.CLIENT_ID.substring(0, 10)}...` : 'Not set');
-    console.log('window.gapi available:', !!window.gapi);
-    console.log('window.google available:', !!(window as any).google);
-    
-    if (window.gapi) {
-      console.log('gapi.client available:', !!window.gapi.client);
-      console.log('gapi.load function:', typeof window.gapi.load);
-    }
-
-    if ((window as any).google) {
-      console.log('google.accounts available:', !!((window as any).google.accounts));
-      if ((window as any).google.accounts) {
-        console.log('google.accounts.oauth2 available:', !!((window as any).google.accounts.oauth2));
-      }
-    }
-    console.log('Token client initialized:', !!this.tokenClient);
-    console.log('================================');
+    console.log('Google API Status:', {
+      clientId: !!this.CLIENT_ID,
+      gapi: !!window.gapi,
+      google: !!(window as any).google,
+      tokenClient: !!this.tokenClient,
+      environment: this.isElectron() ? 'Electron' : 'Browser'
+    });
   }
 
   static isElectron(): boolean {
@@ -278,27 +266,19 @@ export class GoogleAuthHelper {
     const startTime = Date.now();
     const isElectron = this.isElectron();
     
-    console.log('Environment detected:', isElectron ? 'Electron' : 'Browser');
-    
     while (Date.now() - startTime < maxWaitMs) {
       if (window.gapi && window.gapi.load) {
         if (isElectron) {
-          // In Electron, we only need gapi, not GIS
-          console.log('Google API ready (Electron mode - no GIS)');
           return true;
         } else {
-          // In Browser, we need both gapi and GIS
           if ((window as any).google && (window as any).google.accounts) {
-            console.log('Google APIs ready (Browser mode - with GIS)');
             return true;
           }
         }
       }
-      console.log('Waiting for Google APIs to load...');
       await new Promise(resolve => setTimeout(resolve, 500));
     }
     
-    console.error('Google APIs failed to load within timeout');
     return false;
   }
 
@@ -325,14 +305,9 @@ export class GoogleAuthHelper {
               discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest'],
             });
 
-            // Try to initialize Google Identity Services, but fallback for Electron
             if (isElectron) {
-              console.log('Electron detected: Using OAuth popup fallback method');
-              // In Electron, we'll use a manual OAuth flow
-              console.log('Google API initialized successfully (Electron mode)');
               resolve();
             } else {
-              // Browser environment - try to use GIS
               if (!(window as any).google || !(window as any).google.accounts) {
                 throw new Error('Google Identity Services not loaded');
               }
@@ -340,28 +315,13 @@ export class GoogleAuthHelper {
               this.tokenClient = (window as any).google.accounts.oauth2.initTokenClient({
                 client_id: this.CLIENT_ID,
                 scope: this.SCOPES,
-                callback: '', // Will be set in signIn method
+                callback: '',
               });
 
-              console.log('Google API and GIS initialized successfully (Browser mode)');
               resolve();
             }
           } catch (error: any) {
-            console.error('Error initializing Google API/GIS:', error);
-            console.error('Initialization error details:', {
-              message: error.message,
-              stack: error.stack,
-              clientId: this.CLIENT_ID,
-              gapiLoaded: !!window.gapi,
-              googleLoaded: !!((window as any).google),
-              accountsLoaded: !!((window as any).google && (window as any).google.accounts),
-              clientAvailable: !!(window.gapi && window.gapi.client),
-              isElectron: isElectron
-            });
-            
-            // If we're in Electron and GIS fails, that's expected - continue anyway
             if (isElectron) {
-              console.log('GIS initialization failed in Electron - this is expected, using fallback');
               resolve();
             } else {
               reject(error);
@@ -392,57 +352,30 @@ export class GoogleAuthHelper {
       const isElectron = this.isElectron();
 
       if (isElectron) {
-        // Electron: Use manual OAuth flow
-        console.log('Starting Google sign-in process with manual OAuth (Electron)...');
         return await this.signInElectron();
       } else {
-        // Browser: Use GIS
         if (!this.tokenClient) {
           throw new Error('Failed to initialize Google token client');
         }
-
-        console.log('Starting Google sign-in process with GIS (Browser)...');
         
         return new Promise((resolve, reject) => {
-          // Set the callback for token response
           this.tokenClient.callback = (response: any) => {
             if (response.error) {
-              console.error('Token response error:', response);
               reject(new Error(response.error_description || response.error));
               return;
             }
             
             if (response.access_token) {
-              console.log('Google sign-in successful with GIS');
               resolve(response.access_token);
             } else {
               reject(new Error('No access token received from Google'));
             }
           };
 
-          // Request access token
           this.tokenClient.requestAccessToken();
         });
       }
     } catch (error: any) {
-      console.error('Error during Google sign-in:', error);
-      console.error('Error type:', typeof error);
-      console.error('Error constructor:', error.constructor?.name);
-      console.error('Error keys:', Object.keys(error || {}));
-      
-      // Log all error properties for debugging
-      if (error) {
-        console.log('Error properties:', {
-          message: error.message,
-          error: error.error,
-          details: error.details,
-          code: error.code,
-          status: error.status,
-          stack: error.stack
-        });
-      }
-      
-      // Provide more specific error messages
       if (error.message?.includes('popup_closed_by_user')) {
         throw new Error('Autenticación cancelada por el usuario');
       } else if (error.message?.includes('popup_blocked')) {
@@ -457,18 +390,14 @@ export class GoogleAuthHelper {
         throw new Error('Google Identity Services no cargado. Verifica tu conexión a internet.');
       }
       
-      // If we have specific error details, include them
-      const errorDetails = error.details || error.error || error.message || JSON.stringify(error);
-      throw new Error(`Error al autenticar con Google Calendar: ${errorDetails}`);
+      throw new Error(`Error al autenticar con Google Calendar: ${error.message || 'Error desconocido'}`);
     }
   }
 
   static async signOut(): Promise<void> {
     try {
       if ((window as any).google && (window as any).google.accounts && (window as any).google.accounts.oauth2) {
-        (window as any).google.accounts.oauth2.revoke('', () => {
-          console.log('Access token revoked');
-        });
+        (window as any).google.accounts.oauth2.revoke('', () => {});
       }
     } catch (error) {
       console.error('Error during Google sign-out:', error);
@@ -504,7 +433,6 @@ export class GoogleAuthHelper {
         `state=${state}&` +
         `include_granted_scopes=true`;
 
-      console.log('Opening OAuth popup for Electron...');
       
       // Create a popup window for OAuth
       const popup = window.open(
