@@ -17,6 +17,7 @@ import { darkTheme } from './theme';
 import { useSettingsStore } from './stores/settingsStore';
 import { useUIStore } from './stores/uiStore';
 import { initializeStores } from './stores';
+import { electronUtils } from './utils/electronUtils';
 
 function App() {
   // Zustand stores
@@ -32,7 +33,7 @@ function App() {
   const setSettingsOpen = useUIStore((state) => state.setSettingsOpen);
 
   // Detectar si estamos en Electron
-  const isElectron = !!(window as any).require;
+  const isElectron = electronUtils.isElectron();
 
   useEffect(() => {
     // Initialize Zustand stores

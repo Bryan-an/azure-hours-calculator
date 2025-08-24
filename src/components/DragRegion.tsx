@@ -1,4 +1,5 @@
 import React from 'react';
+import { electronUtils } from '../utils/electronUtils';
 
 interface DragRegionProps {
   onDoubleClick?: () => void;
@@ -6,7 +7,7 @@ interface DragRegionProps {
 
 export const DragRegion: React.FC<DragRegionProps> = ({ onDoubleClick }) => {
   // Detectar si estamos en Electron
-  const isElectron = !!(window as any).require;
+  const isElectron = electronUtils.isElectron();
 
   const handleDoubleClick = (e: React.MouseEvent) => {
     e.preventDefault();
