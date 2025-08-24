@@ -21,3 +21,25 @@ code {
 #root {
   min-height: 100vh;
 }
+
+/* Ajustes específicos para Electron en macOS */
+.electron-app {
+  padding-top: env(titlebar-area-height, 0px);
+}
+
+/* Asegurar que el AppBar no se superponga con los botones de tráfico */
+.MuiAppBar-root {
+  -webkit-app-region: drag;
+}
+
+.MuiAppBar-root .MuiToolbar-root,
+.MuiAppBar-root .MuiToolbar-root * {
+  -webkit-app-region: no-drag;
+}
+
+/* Espaciado adicional en macOS cuando se detecta el contexto de Electron */
+@media screen and (-webkit-device-pixel-ratio: 1) {
+  .electron-darwin .MuiAppBar-root {
+    padding-top: 20px;
+  }
+}

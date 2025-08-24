@@ -41,6 +41,20 @@ const darkTheme = createTheme({
         },
       },
     },
+    MuiAppBar: {
+      styleOverrides: {
+        root: {
+          '&.electron-darwin-appbar': {
+            paddingTop: '20px',
+          },
+          WebkitAppRegion: 'drag',
+          '& .MuiToolbar-root': {
+            WebkitAppRegion: 'no-drag',
+            minHeight: '48px !important',
+          },
+        },
+      },
+    },
   },
 });
 
@@ -48,13 +62,25 @@ function App() {
   const [workSchedule, setWorkSchedule] = useState<WorkSchedule>(StorageUtil.getDefaultWorkSchedule());
   const [settingsOpen, setSettingsOpen] = useState(false);
 
+  // Detectar si estamos en Electron
+  const isElectron = !!(window as any).require;
+  const isMacOS = navigator.platform.includes('Mac');
+
   useEffect(() => {
     // Cargar configuración guardada al inicio
     const savedSchedule = StorageUtil.loadWorkSchedule();
     if (savedSchedule) {
       setWorkSchedule(savedSchedule);
     }
-  }, []);
+
+    // Agregar clases CSS para contexto de Electron
+    if (isElectron) {
+      document.body.classList.add('electron-app');
+      if (isMacOS) {
+        document.body.classList.add('electron-darwin');
+      }
+    }
+  }, [isElectron, isMacOS]);
 
   const handleWorkScheduleChange = (newSchedule: WorkSchedule) => {
     setWorkSchedule(newSchedule);
@@ -64,7 +90,11 @@ function App() {
     <ThemeProvider theme={darkTheme}>
       <CssBaseline />
       <div className="App">
-        <AppBar position="static" elevation={1}>
+        <AppBar 
+          position="static" 
+          elevation={1}
+          className={isElectron && isMacOS ? 'electron-darwin-appbar' : ''}
+        >
           <Toolbar>
             <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
               Azure Hours Calculator
