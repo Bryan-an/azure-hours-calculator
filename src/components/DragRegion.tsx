@@ -1,5 +1,4 @@
 import React from 'react';
-import { Box } from '@mui/material';
 
 interface DragRegionProps {
   onDoubleClick?: () => void;
@@ -9,7 +8,8 @@ export const DragRegion: React.FC<DragRegionProps> = ({ onDoubleClick }) => {
   // Detectar si estamos en Electron
   const isElectron = !!(window as any).require;
 
-  const handleDoubleClick = () => {
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
     if (isElectron && onDoubleClick) {
       onDoubleClick();
     }
@@ -19,19 +19,18 @@ export const DragRegion: React.FC<DragRegionProps> = ({ onDoubleClick }) => {
     return null;
   }
 
+  // Solo devuelve el event handler, el CSS se encarga del drag
   return (
-    <Box
-      className="drag-region"
+    <div
       onDoubleClick={handleDoubleClick}
-      sx={{
+      style={{
         position: 'absolute',
         top: 0,
         left: 0,
         right: 0,
         height: '100%',
-        zIndex: -1,
-        WebkitAppRegion: 'drag',
-        WebkitUserSelect: 'none',
+        zIndex: 0,
+        pointerEvents: 'auto',
         cursor: 'default',
       }}
     />

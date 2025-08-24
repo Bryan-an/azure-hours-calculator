@@ -53,8 +53,6 @@ const darkTheme = createTheme({
           },
           '& .MuiToolbar-root': {
             minHeight: '48px !important',
-            position: 'relative',
-            zIndex: 1,
           },
         },
       },
