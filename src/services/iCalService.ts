@@ -33,10 +33,15 @@ export class ICalService {
         url: this.sanitizeUrl(this.url)
       });
 
-      const response = await fetch(this.url, {
+      // Use CORS proxy for Google Calendar URLs to avoid CORS issues
+      const proxyUrl = this.needsCorsProxy(this.url) 
+        ? `https://api.allorigins.win/get?url=${encodeURIComponent(this.url)}`
+        : this.url;
+
+      const response = await fetch(proxyUrl, {
         method: 'GET',
         headers: {
-          'Accept': 'text/calendar',
+          'Accept': this.needsCorsProxy(this.url) ? 'application/json' : 'text/calendar',
         },
       });
 
@@ -44,7 +49,13 @@ export class ICalService {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
-      const icalData = await response.text();
+      let icalData: string;
+      if (this.needsCorsProxy(this.url)) {
+        const jsonResponse = await response.json();
+        icalData = jsonResponse.contents;
+      } else {
+        icalData = await response.text();
+      }
       const events = this.parseICalData(icalData);
       
       // Filter events by date range
@@ -218,6 +229,22 @@ export class ICalService {
     return false;
   }
 
+  private needsCorsProxy(url: string): boolean {
+    // Check if URL is from domains that typically have CORS restrictions
+    const corsRestrictedDomains = [
+      'calendar.google.com',
+      'outlook.live.com',
+      'outlook.office365.com'
+    ];
+    
+    try {
+      const urlObj = new URL(url);
+      return corsRestrictedDomains.some(domain => urlObj.host.includes(domain));
+    } catch {
+      return false;
+    }
+  }
+
   private sanitizeUrl(url: string): string {
     // Remove sensitive parts from URL for logging
     try {
@@ -257,24 +284,43 @@ export class ICalService {
     }
 
     try {
-      const response = await fetch(this.url, {
-        method: 'HEAD', // Just check if URL is accessible
+      // Use CORS proxy for Google Calendar URLs
+      const proxyUrl = this.needsCorsProxy(this.url) 
+        ? `https://api.allorigins.win/get?url=${encodeURIComponent(this.url)}`
+        : this.url;
+
+      const response = await fetch(proxyUrl, {
+        method: this.needsCorsProxy(this.url) ? 'GET' : 'HEAD', // Proxy doesn't support HEAD
         headers: {
-          'Accept': 'text/calendar',
+          'Accept': this.needsCorsProxy(this.url) ? 'application/json' : 'text/calendar',
         },
       });
       
+      let success = response.ok;
+      
+      // For proxy requests, also check if the proxied content is valid
+      if (success && this.needsCorsProxy(this.url)) {
+        try {
+          const jsonResponse = await response.json();
+          success = !!jsonResponse.contents && jsonResponse.contents.includes('BEGIN:VCALENDAR');
+        } catch {
+          success = false;
+        }
+      }
+      
       this.logSecurityEvent('ical_connection_test', {
-        success: response.ok,
+        success,
         status: response.status,
+        usedProxy: this.needsCorsProxy(this.url),
         url: this.sanitizeUrl(this.url)
       });
       
-      return response.ok;
+      return success;
     } catch (error) {
       this.logSecurityEvent('ical_connection_test', {
         success: false,
         error: error instanceof Error ? error.message : 'unknown',
+        usedProxy: this.needsCorsProxy(this.url),
         url: this.sanitizeUrl(this.url)
       });
       
