@@ -13,7 +13,6 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import { TaskCalculator } from './components/TaskCalculator';
 import { SettingsDialog } from './components/SettingsDialog';
 import { ElectronTitleBar } from './components/ElectronTitleBar';
-import { ZustandDemo } from './components/ZustandDemo';
 import { darkTheme } from './theme';
 import { useSettingsStore } from './stores/settingsStore';
 import { useUIStore } from './stores/uiStore';
@@ -121,7 +120,6 @@ function App() {
               </Typography>
             </Box>
 
-            <ZustandDemo />
             <TaskCalculator />
           </Container>
         </div>
