@@ -45,7 +45,9 @@ const darkTheme = createTheme({
       styleOverrides: {
         root: {
           '&.electron-darwin-appbar': {
-            paddingTop: '40px',
+            '& .MuiToolbar-root': {
+              paddingTop: '40px',
+            },
           },
           WebkitAppRegion: 'drag',
           '& .MuiToolbar-root': {
@@ -72,15 +74,7 @@ function App() {
     if (savedSchedule) {
       setWorkSchedule(savedSchedule);
     }
-
-    // Agregar clases CSS para contexto de Electron
-    if (isElectron) {
-      document.body.classList.add('electron-app');
-      if (isMacOS) {
-        document.body.classList.add('electron-darwin');
-      }
-    }
-  }, [isElectron, isMacOS]);
+  }, []);
 
   const handleWorkScheduleChange = (newSchedule: WorkSchedule) => {
     setWorkSchedule(newSchedule);
