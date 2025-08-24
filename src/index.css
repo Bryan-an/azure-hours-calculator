@@ -40,6 +40,6 @@ code {
 /* Espaciado adicional en macOS cuando se detecta el contexto de Electron */
 @media screen and (-webkit-device-pixel-ratio: 1) {
   .electron-darwin .MuiAppBar-root {
-    padding-top: 20px;
+    padding-top: 40px;
   }
 }

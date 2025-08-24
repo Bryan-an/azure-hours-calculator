@@ -45,7 +45,7 @@ const darkTheme = createTheme({
       styleOverrides: {
         root: {
           '&.electron-darwin-appbar': {
-            paddingTop: '20px',
+            paddingTop: '40px',
           },
           WebkitAppRegion: 'drag',
           '& .MuiToolbar-root': {
