@@ -55,7 +55,7 @@ const getDefaultWorkSchedule = (): WorkSchedule => ({
 const getDefaultSecuritySettings = (): SecuritySettings => ({
   sessionTimeoutMinutes: 480, // 8 hours default
   lastActivityTimestamp: Date.now(),
-  autoLogoutEnabled: true,
+  autoLogoutEnabled: false,
 });
 
 const getDefaultGoogleAuth = (): GoogleAuthData => ({
