@@ -23,7 +23,7 @@ export class ICalService {
 
   async getEvents(startDate: Date, endDate: Date): Promise<Meeting[]> {
     if (!this.url || !this.url.trim()) {
-      console.warn('iCal URL not configured');
+      // iCal URL not configured
       return [];
     }
 
@@ -79,10 +79,7 @@ export class ICalService {
         isElectron: !!(window as any).require || !!(window as any).electronAPI || navigator.userAgent.includes('Electron')
       });
       
-      console.error('Error fetching iCal data:', error);
-      console.error('URL attempted:', this.sanitizeUrl(this.url));
-      console.error('Used proxy:', this.needsCorsProxy(this.url));
-      console.error('Is Electron:', !!(window as any).require || !!(window as any).electronAPI || navigator.userAgent.includes('Electron'));
+      // Error fetching iCal data - details logged securely
       
       throw error; // Re-throw to show user the specific error
     }
@@ -287,7 +284,7 @@ export class ICalService {
     localStorage.setItem('calendar_audit_log', JSON.stringify(recentLogs));
     
     // Also log to console for development
-    console.log(`[ICAL-SECURITY] ${event}:`, logEntry);
+    // Security event logged to localStorage only
   }
 
   async testConnection(): Promise<boolean> {
@@ -336,7 +333,7 @@ export class ICalService {
         url: this.sanitizeUrl(this.url)
       });
       
-      console.error('Error testing iCal connection:', error);
+      // Connection test failed
       return false;
     }
   }

@@ -130,7 +130,7 @@ export class StorageUtil {
     if (this.isSessionExpired()) {
       this.clearGoogleAuth();
       // Log security event
-      console.warn('[SECURITY] Session expired and cleared');
+      // Session expired and cleared
       const securityLog = {
         event: 'session_expired',
         timestamp: new Date().toISOString(),

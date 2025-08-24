@@ -42,9 +42,7 @@ export class GoogleCalendarService {
     try {
       // Note: This would require implementing token refresh endpoint
       // For now, we'll log the attempt and clear tokens for re-auth
-      console.warn('Token refresh needed. Please re-authenticate.');
       this.logSecurityEvent('token_refresh_attempted', { 
-        timestamp: new Date().toISOString(),
         reason: 'token_expired'
       });
       
@@ -55,8 +53,7 @@ export class GoogleCalendarService {
       throw new Error('Token expirado. Por favor, vuelve a autenticarte en Configuración.');
     } catch (error) {
       this.logSecurityEvent('token_refresh_failed', { 
-        error: error instanceof Error ? error.message : 'unknown',
-        timestamp: new Date().toISOString()
+        error: 'failed'
       });
       throw error;
     }
@@ -66,41 +63,34 @@ export class GoogleCalendarService {
     const logEntry = {
       timestamp: new Date().toISOString(),
       event,
+      // Remove sensitive details from logging
       details: {
-        ...details,
-        userAgent: navigator.userAgent,
-        calendarId: this.calendarId,
+        eventsCount: details.eventsCount,
+        filteredEventsCount: details.filteredEventsCount,
+        error: details.error ? 'Error occurred' : undefined,
+        status: details.status
       }
     };
     
-    // Store in localStorage for audit trail
+    // Store in localStorage for audit trail (without sensitive data)
     const existingLogs = JSON.parse(localStorage.getItem('google_calendar_audit_log') || '[]');
     existingLogs.push(logEntry);
     
-    // Keep only last 100 entries
-    const recentLogs = existingLogs.slice(-100);
+    // Keep only last 50 entries
+    const recentLogs = existingLogs.slice(-50);
     localStorage.setItem('google_calendar_audit_log', JSON.stringify(recentLogs));
-    
-    // Also log to console for development
-    console.log(`[SECURITY] ${event}:`, logEntry);
   }
 
   async getEvents(startDate: Date, endDate: Date): Promise<Meeting[]> {
     if (!this.accessToken) {
-      this.logSecurityEvent('access_attempt_no_token', { 
-        dateRange: { start: startDate.toISOString(), end: endDate.toISOString() }
-      });
-      console.warn('Google Calendar access token not configured');
+      this.logSecurityEvent('access_attempt_no_token', {});
       return [];
     }
 
     try {
       await this.ensureValidToken();
       
-      this.logSecurityEvent('calendar_access_start', {
-        dateRange: { start: startDate.toISOString(), end: endDate.toISOString() },
-        calendarId: this.calendarId
-      });
+      this.logSecurityEvent('calendar_access_start', {});
       const response = await axios.get(
         `${GOOGLE_CALENDAR_API_BASE_URL}/calendars/${this.calendarId}/events`,
         {
@@ -155,8 +145,6 @@ export class GoogleCalendarService {
       return mappedEvents;
     } catch (error) {
       this.logSecurityEvent('calendar_access_error', {
-        error: error instanceof Error ? error.message : 'unknown',
-        isAxiosError: axios.isAxiosError(error),
         status: axios.isAxiosError(error) ? error.response?.status : undefined
       });
       
@@ -207,7 +195,7 @@ export class GoogleCalendarService {
       });
       return true;
     } catch (error) {
-      console.error('Error testing Google Calendar connection:', error);
+      // Connection test failed
       return false;
     }
   }
@@ -232,7 +220,7 @@ export class GoogleCalendarService {
         summary: calendar.summary || calendar.id,
       }));
     } catch (error) {
-      console.error('Error fetching calendar list:', error);
+      // Error fetching calendar list
       return [];
     }
   }
@@ -249,13 +237,7 @@ export class GoogleAuthHelper {
   }
 
   static diagnoseGoogleAPI(): void {
-    console.log('Google API Status:', {
-      clientId: !!this.CLIENT_ID,
-      gapi: !!window.gapi,
-      google: !!(window as any).google,
-      tokenClient: !!this.tokenClient,
-      environment: this.isElectron() ? 'Electron' : 'Browser'
-    });
+    // API status check without logging sensitive information
   }
 
   static isElectron(): boolean {
@@ -328,8 +310,8 @@ export class GoogleAuthHelper {
             }
           }
         },
-        onerror: (error: any) => {
-          console.error('Error loading Google API libraries:', error);
+        onerror: () => {
+          // Error loading Google API libraries
           reject(new Error('Failed to load Google API libraries'));
         },
       });
@@ -400,7 +382,7 @@ export class GoogleAuthHelper {
         (window as any).google.accounts.oauth2.revoke('', () => {});
       }
     } catch (error) {
-      console.error('Error during Google sign-out:', error);
+      // Sign-out error handled silently
     }
   }
 
