@@ -348,8 +348,9 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
               Fuente de Calendario
             </Typography>
             <FormControl fullWidth sx={{ mb: 3 }}>
-              <InputLabel>Seleccionar fuente de calendario</InputLabel>
+              <InputLabel id="calendar-source-label">Seleccionar fuente de calendario</InputLabel>
               <Select
+                labelId="calendar-source-label"
                 value={calendarSource}
                 onChange={(e) => setCalendarSource(e.target.value as CalendarSource)}
                 label="Seleccionar fuente de calendario"
@@ -466,8 +467,9 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                     
                     {availableCalendars.length > 0 && (
                       <FormControl fullWidth sx={{ mb: 2 }}>
-                        <InputLabel>Calendario a usar</InputLabel>
+                        <InputLabel id="calendar-select-label">Calendario a usar</InputLabel>
                         <Select
+                          labelId="calendar-select-label"
                           value={googleCalendarId || 'primary'}
                           onChange={(e) => setGoogleCalendarId(e.target.value)}
                           label="Calendario a usar"
