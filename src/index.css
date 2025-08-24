@@ -7,6 +7,13 @@ body {
   -moz-osx-font-smoothing: grayscale;
   background-color: #121212;
   color: #ffffff;
+  overflow: hidden;
+}
+
+/* En Electron, el body NO debe hacer scroll */
+body.electron-app {
+  overflow: hidden;
+  height: 100vh;
 }
 
 code {
@@ -19,7 +26,30 @@ code {
 }
 
 #root {
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Contenedor principal scrollable en Electron */
+.electron-app #root {
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Área de contenido scrollable */
+.electron-app .App {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.electron-app .main-content {
+  flex: 1;
+  overflow-y: auto;
+  margin-top: 32px;
+  height: calc(100vh - 32px);
 }
 
 /* Configuración para Electron frameless window */
@@ -31,6 +61,12 @@ code {
 .electron-titlebar {
   -webkit-app-region: drag;
   -webkit-user-select: none;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 1300 !important;
+  width: 100% !important;
 }
 
 /* Hacer que todos los componentes MUI sean no-draggables por defecto */

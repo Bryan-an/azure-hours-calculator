@@ -47,8 +47,12 @@ export const ElectronTitleBar: React.FC<ElectronTitleBarProps> = ({
         borderBottom: '1px solid #333',
         WebkitAppRegion: 'drag',
         WebkitUserSelect: 'none',
-        position: 'relative',
-        zIndex: 1000,
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 1300,
+        width: '100%',
       }}
     >
       {/* Controles de ventana (solo en Windows/Linux) */}

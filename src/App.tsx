@@ -101,25 +101,33 @@ function App() {
           </AppBar>
         )}
 
-        <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-          <Box sx={{ mb: 3 }}>
-            <Typography variant="h4" component="h1" gutterBottom align="center">
-              Calculadora de Fechas para Azure DevOps
-            </Typography>
-            <Typography
-              variant="subtitle1"
-              color="text.secondary"
-              align="center"
-              sx={{ mb: 4 }}
-            >
-              Calcula automáticamente las fechas de inicio y fin de tus tareas
-              considerando tu horario laboral, feriados ecuatorianos y reuniones
-              programadas.
-            </Typography>
-          </Box>
+        {/* Contenido principal - scrollable en Electron */}
+        <div className={isElectron ? 'main-content' : ''}>
+          <Container maxWidth="lg" sx={{ pt: 4, pb: 4 }}>
+            <Box sx={{ mb: 3 }}>
+              <Typography
+                variant="h4"
+                component="h1"
+                gutterBottom
+                align="center"
+              >
+                Calculadora de Fechas para Azure DevOps
+              </Typography>
+              <Typography
+                variant="subtitle1"
+                color="text.secondary"
+                align="center"
+                sx={{ mb: 4 }}
+              >
+                Calcula automáticamente las fechas de inicio y fin de tus tareas
+                considerando tu horario laboral, feriados ecuatorianos y
+                reuniones programadas.
+              </Typography>
+            </Box>
 
-          <TaskCalculator workSchedule={workSchedule} />
-        </Container>
+            <TaskCalculator workSchedule={workSchedule} />
+          </Container>
+        </div>
 
         <SettingsDialog
           open={settingsOpen}
