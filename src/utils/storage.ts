@@ -2,8 +2,9 @@ import { WorkSchedule } from '../types';
 
 const STORAGE_KEYS = {
   WORK_SCHEDULE: 'workSchedule',
-  NOTION_API_KEY: 'notionApiKey',
-  NOTION_DATABASE_ID: 'notionDatabaseId',
+  GOOGLE_CLIENT_ID: 'googleClientId',
+  GOOGLE_ACCESS_TOKEN: 'googleAccessToken',
+  GOOGLE_CALENDAR_ID: 'googleCalendarId',
   CALENDARIFIC_API_KEY: 'calendarificApiKey',
 } as const;
 
@@ -34,20 +35,33 @@ export class StorageUtil {
     };
   }
 
-  static saveNotionApiKey(apiKey: string): void {
-    localStorage.setItem(STORAGE_KEYS.NOTION_API_KEY, apiKey);
+  static saveGoogleClientId(clientId: string): void {
+    localStorage.setItem(STORAGE_KEYS.GOOGLE_CLIENT_ID, clientId);
   }
 
-  static loadNotionApiKey(): string | null {
-    return localStorage.getItem(STORAGE_KEYS.NOTION_API_KEY);
+  static loadGoogleClientId(): string | null {
+    return localStorage.getItem(STORAGE_KEYS.GOOGLE_CLIENT_ID);
   }
 
-  static saveNotionDatabaseId(databaseId: string): void {
-    localStorage.setItem(STORAGE_KEYS.NOTION_DATABASE_ID, databaseId);
+  static saveGoogleAccessToken(accessToken: string): void {
+    localStorage.setItem(STORAGE_KEYS.GOOGLE_ACCESS_TOKEN, accessToken);
   }
 
-  static loadNotionDatabaseId(): string | null {
-    return localStorage.getItem(STORAGE_KEYS.NOTION_DATABASE_ID);
+  static loadGoogleAccessToken(): string | null {
+    return localStorage.getItem(STORAGE_KEYS.GOOGLE_ACCESS_TOKEN);
+  }
+
+  static saveGoogleCalendarId(calendarId: string): void {
+    localStorage.setItem(STORAGE_KEYS.GOOGLE_CALENDAR_ID, calendarId);
+  }
+
+  static loadGoogleCalendarId(): string | null {
+    return localStorage.getItem(STORAGE_KEYS.GOOGLE_CALENDAR_ID);
+  }
+
+  static clearGoogleAuth(): void {
+    localStorage.removeItem(STORAGE_KEYS.GOOGLE_ACCESS_TOKEN);
+    localStorage.removeItem(STORAGE_KEYS.GOOGLE_CALENDAR_ID);
   }
 
   static saveCalendarificApiKey(apiKey: string): void {

@@ -2,13 +2,13 @@
 
 ## 📋 Project Overview
 
-**Azure Hours Calculator** es una aplicación de escritorio para macOS que calcula automáticamente las fechas de inicio y fin de tareas en Azure DevOps, considerando horarios laborales, feriados ecuatorianos y reuniones programadas.
+**Azure Hours Calculator** es una aplicación de escritorio para macOS que calcula automáticamente las fechas de inicio y fin de tareas en Azure DevOps, considerando horarios laborales, feriados ecuatorianos y eventos de Google Calendar.
 
 ### 🎯 Propósito
 Automatizar el proceso manual de calcular fechas de finalización de tareas considerando:
 - Horario laboral configurable (8:30 AM - 5:30 PM con almuerzo 1:00-2:00 PM)
 - Feriados nacionales de Ecuador
-- Reuniones del calendario de Notion (opcional)
+- Eventos del Google Calendar (opcional)
 - Días laborales (Lunes a Viernes)
 
 ## 🛠 Stack Tecnológico
@@ -18,7 +18,7 @@ Automatizar el proceso manual de calcular fechas de finalización de tareas cons
 - **Fechas**: date-fns
 - **APIs Externas**: 
   - Calendarific (feriados ecuatorianos)
-  - Notion API (calendario de reuniones)
+  - Google Calendar API (eventos y reuniones)
 - **Almacenamiento**: localStorage
 
 ## 📁 Arquitectura del Proyecto
@@ -36,7 +36,7 @@ azure-hours-calculator/
 │   │   └── TaskCalculator.tsx   # Calculadora principal
 │   ├── services/
 │   │   ├── holidayService.ts    # API de feriados ecuatorianos
-│   │   └── notionService.ts     # Integración con Notion
+│   │   └── googleCalendarService.ts # Integración con Google Calendar
 │   ├── utils/
 │   │   ├── dateCalculations.ts  # Lógica de cálculo de fechas
 │   │   ├── electronUtils.ts     # Utilidades para Electron
@@ -132,10 +132,10 @@ input {
 - **Fallback**: Lista estática de feriados 2025 incluida
 - **Configuración**: `REACT_APP_CALENDARIFIC_API_KEY` en `.env`
 
-### Notion API (Opcional)  
-- **Propósito**: Excluir reuniones del cálculo de horas
-- **Configuración**: API Key + Database ID vía interfaz
-- **Estructura esperada**: Database con columnas `Date`, `Title`, `Optional`
+### Google Calendar API (Opcional)  
+- **Propósito**: Excluir eventos y reuniones del cálculo de horas
+- **Configuración**: Google Client ID + Autenticación OAuth vía interfaz
+- **Autenticación**: OAuth 2.0 flow con acceso a calendario de solo lectura
 
 ## 💾 Configuración y Storage
 
@@ -154,8 +154,9 @@ interface WorkSchedule {
 ```typescript
 const STORAGE_KEYS = {
   WORK_SCHEDULE: 'workSchedule',
-  NOTION_API_KEY: 'notionApiKey',
-  NOTION_DATABASE_ID: 'notionDatabaseId',
+  GOOGLE_CLIENT_ID: 'googleClientId',
+  GOOGLE_ACCESS_TOKEN: 'googleAccessToken',
+  GOOGLE_CALENDAR_ID: 'googleCalendarId',
   CALENDARIFIC_API_KEY: 'calendarificApiKey',
 };
 ```
@@ -182,7 +183,7 @@ const STORAGE_KEYS = {
 3. Para cada día:
    - Verificar si es día laboral
    - Verificar si es feriado (si está habilitado)
-   - Calcular minutos disponibles (día laboral - almuerzo - reuniones)
+   - Calcular minutos disponibles (día laboral - almuerzo - eventos de calendario)
    - Restar minutos usados del total necesario
 4. Retornar fecha/hora de finalización
 
@@ -190,7 +191,7 @@ const STORAGE_KEYS = {
 - Respeta horarios de almuerzo
 - Excluye fines de semana
 - Maneja feriados ecuatorianos
-- Considera duración de reuniones
+- Considera duración de eventos de Google Calendar
 
 ## 🚀 Scripts de Desarrollo
 
@@ -218,7 +219,7 @@ BROWSER=none                           # No abrir navegador en dev
 REACT_APP_CALENDARIFIC_API_KEY=xxx     # API feriados (opcional)
 ```
 
-**Nota**: Las APIs de Notion se configuran vía UI, no variables de entorno.
+**Nota**: Google Calendar se configura vía UI con autenticación OAuth, no variables de entorno.
 
 ## 📚 Dependencias Críticas
 
@@ -256,7 +257,7 @@ REACT_APP_CALENDARIFIC_API_KEY=xxx     # API feriados (opcional)
 
 ### 3. API Rate Limits
 - Calendarific: 1000 requests/mes (plan gratuito)
-- Notion: Rate limits según plan de usuario
+- Google Calendar: Límites generosos según Google Cloud quotas
 
 ### 4. Timezone Assumptions
 - Cálculos asumen timezone de Ecuador (GMT-5)
@@ -266,7 +267,7 @@ REACT_APP_CALENDARIFIC_API_KEY=xxx     # API feriados (opcional)
 
 ### High Priority
 - [ ] Soporte para múltiples zonas horarias
-- [ ] Integración con Google Calendar
+- [x] Integración con Google Calendar (completado)
 - [ ] Exportar resultados a CSV/PDF
 - [ ] Configuración de feriados personalizados
 

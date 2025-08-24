@@ -24,7 +24,7 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { es } from 'date-fns/locale';
 import { WorkSchedule } from '../types';
 import { StorageUtil } from '../utils/storage';
-import { NotionService } from '../services/notionService';
+import { GoogleCalendarService, GoogleAuthHelper } from '../services/googleCalendarService';
 
 interface SettingsDialogProps {
   open: boolean;
@@ -50,17 +50,29 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
   onWorkScheduleChange,
 }) => {
   const [localSchedule, setLocalSchedule] = useState<WorkSchedule>(workSchedule);
-  const [notionApiKey, setNotionApiKey] = useState('');
-  const [notionDatabaseId, setNotionDatabaseId] = useState('');
+  const [googleClientId, setGoogleClientId] = useState('');
+  const [googleAccessToken, setGoogleAccessToken] = useState('');
+  const [googleCalendarId, setGoogleCalendarId] = useState('');
   const [calendarificApiKey, setCalendarificApiKey] = useState('');
-  const [notionConnectionStatus, setNotionConnectionStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
+  const [googleConnectionStatus, setGoogleConnectionStatus] = useState<'idle' | 'testing' | 'success' | 'error' | 'authenticating'>('idle');
+  const [availableCalendars, setAvailableCalendars] = useState<Array<{id: string, summary: string}>>([]);
+  const [isGoogleSignedIn, setIsGoogleSignedIn] = useState(false);
 
   useEffect(() => {
     if (open) {
       setLocalSchedule(workSchedule);
-      setNotionApiKey(StorageUtil.loadNotionApiKey() || '');
-      setNotionDatabaseId(StorageUtil.loadNotionDatabaseId() || '');
+      setGoogleClientId(StorageUtil.loadGoogleClientId() || '');
+      setGoogleAccessToken(StorageUtil.loadGoogleAccessToken() || '');
+      setGoogleCalendarId(StorageUtil.loadGoogleCalendarId() || '');
       setCalendarificApiKey(StorageUtil.loadCalendarificApiKey() || '');
+      
+      // Check if user is signed in to Google
+      setIsGoogleSignedIn(!!StorageUtil.loadGoogleAccessToken());
+      
+      // Load available calendars if already authenticated
+      if (StorageUtil.loadGoogleAccessToken()) {
+        loadAvailableCalendars();
+      }
     }
   }, [open, workSchedule]);
 
@@ -84,16 +96,77 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
     setLocalSchedule({ ...localSchedule, workDays: newWorkDays });
   };
 
-  const testNotionConnection = async () => {
-    if (!notionApiKey || !notionDatabaseId) {
-      setNotionConnectionStatus('error');
+  const loadAvailableCalendars = async () => {
+    const accessToken = StorageUtil.loadGoogleAccessToken();
+    if (!accessToken) return;
+
+    try {
+      const googleService = new GoogleCalendarService({ accessToken });
+      const calendars = await googleService.getCalendarList();
+      setAvailableCalendars(calendars);
+    } catch (error) {
+      console.error('Error loading calendars:', error);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    if (!googleClientId) {
+      setGoogleConnectionStatus('error');
       return;
     }
 
-    setNotionConnectionStatus('testing');
-    const notionService = new NotionService(notionApiKey, notionDatabaseId);
-    const isConnected = await notionService.testConnection();
-    setNotionConnectionStatus(isConnected ? 'success' : 'error');
+    setGoogleConnectionStatus('authenticating');
+    
+    try {
+      GoogleAuthHelper.setClientId(googleClientId);
+      const accessToken = await GoogleAuthHelper.signIn();
+      
+      setGoogleAccessToken(accessToken);
+      setIsGoogleSignedIn(true);
+      
+      // Test connection and load calendars
+      const googleService = new GoogleCalendarService({ accessToken });
+      const isConnected = await googleService.testConnection();
+      
+      if (isConnected) {
+        setGoogleConnectionStatus('success');
+        await loadAvailableCalendars();
+      } else {
+        setGoogleConnectionStatus('error');
+      }
+    } catch (error) {
+      console.error('Google sign-in error:', error);
+      setGoogleConnectionStatus('error');
+    }
+  };
+
+  const handleGoogleSignOut = async () => {
+    try {
+      await GoogleAuthHelper.signOut();
+      setGoogleAccessToken('');
+      setGoogleCalendarId('');
+      setIsGoogleSignedIn(false);
+      setAvailableCalendars([]);
+      setGoogleConnectionStatus('idle');
+      StorageUtil.clearGoogleAuth();
+    } catch (error) {
+      console.error('Google sign-out error:', error);
+    }
+  };
+
+  const testGoogleConnection = async () => {
+    if (!googleAccessToken) {
+      setGoogleConnectionStatus('error');
+      return;
+    }
+
+    setGoogleConnectionStatus('testing');
+    const googleService = new GoogleCalendarService({ 
+      accessToken: googleAccessToken,
+      calendarId: googleCalendarId || 'primary'
+    });
+    const isConnected = await googleService.testConnection();
+    setGoogleConnectionStatus(isConnected ? 'success' : 'error');
   };
 
   const handleSave = () => {
@@ -102,8 +175,9 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
     StorageUtil.saveWorkSchedule(localSchedule);
 
     // Guardar configuraciones de APIs
-    StorageUtil.saveNotionApiKey(notionApiKey);
-    StorageUtil.saveNotionDatabaseId(notionDatabaseId);
+    StorageUtil.saveGoogleClientId(googleClientId);
+    StorageUtil.saveGoogleAccessToken(googleAccessToken);
+    StorageUtil.saveGoogleCalendarId(googleCalendarId);
     StorageUtil.saveCalendarificApiKey(calendarificApiKey);
 
     onClose();
@@ -112,10 +186,13 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
   const handleReset = () => {
     const defaultSchedule = StorageUtil.getDefaultWorkSchedule();
     setLocalSchedule(defaultSchedule);
-    setNotionApiKey('');
-    setNotionDatabaseId('');
+    setGoogleClientId('');
+    setGoogleAccessToken('');
+    setGoogleCalendarId('');
     setCalendarificApiKey('');
-    setNotionConnectionStatus('idle');
+    setGoogleConnectionStatus('idle');
+    setIsGoogleSignedIn(false);
+    setAvailableCalendars([]);
   };
 
   return (
@@ -218,49 +295,91 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
             </Typography>
 
             <Typography variant="subtitle1" gutterBottom>
-              Notion (Calendario de Reuniones)
+              Google Calendar (Calendario de Reuniones)
             </Typography>
             <Grid container spacing={2}>
               <Grid item xs={12}>
                 <TextField
                   fullWidth
-                  label="API Key de Notion"
-                  type="password"
-                  value={notionApiKey}
-                  onChange={(e) => setNotionApiKey(e.target.value)}
-                  placeholder="secret_..."
-                  helperText="Token de integración de Notion para acceder a tu calendario"
+                  label="Google Client ID"
+                  value={googleClientId}
+                  onChange={(e) => setGoogleClientId(e.target.value)}
+                  placeholder="123456789012-abc...xyz.apps.googleusercontent.com"
+                  helperText="Client ID de tu aplicación Google OAuth (Google Cloud Console)"
                 />
               </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Database ID de Notion"
-                  value={notionDatabaseId}
-                  onChange={(e) => setNotionDatabaseId(e.target.value)}
-                  placeholder="12345678-1234-1234-1234-123456789abc"
-                  helperText="ID de la base de datos donde tienes tus reuniones"
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <Button
-                  variant="outlined"
-                  onClick={testNotionConnection}
-                  disabled={notionConnectionStatus === 'testing' || !notionApiKey || !notionDatabaseId}
-                >
-                  {notionConnectionStatus === 'testing' ? 'Probando...' : 'Probar Conexión'}
-                </Button>
-                {notionConnectionStatus === 'success' && (
-                  <Alert severity="success" sx={{ mt: 1 }}>
-                    Conexión exitosa con Notion
-                  </Alert>
-                )}
-                {notionConnectionStatus === 'error' && (
-                  <Alert severity="error" sx={{ mt: 1 }}>
-                    Error de conexión. Verifica tus credenciales.
-                  </Alert>
-                )}
-              </Grid>
+              
+              {!isGoogleSignedIn ? (
+                <Grid item xs={12}>
+                  <Button
+                    variant="contained"
+                    onClick={handleGoogleSignIn}
+                    disabled={googleConnectionStatus === 'authenticating' || !googleClientId}
+                    color="primary"
+                  >
+                    {googleConnectionStatus === 'authenticating' ? 'Autenticando...' : 'Conectar con Google Calendar'}
+                  </Button>
+                  {googleConnectionStatus === 'error' && (
+                    <Alert severity="error" sx={{ mt: 1 }}>
+                      Error de autenticación. Verifica tu Client ID y permisos.
+                    </Alert>
+                  )}
+                </Grid>
+              ) : (
+                <>
+                  <Grid item xs={12}>
+                    <Alert severity="success" sx={{ mb: 2 }}>
+                      ✅ Conectado exitosamente a Google Calendar
+                    </Alert>
+                    
+                    {availableCalendars.length > 0 && (
+                      <FormControl fullWidth sx={{ mb: 2 }}>
+                        <InputLabel>Calendario a usar</InputLabel>
+                        <Select
+                          value={googleCalendarId || 'primary'}
+                          onChange={(e) => setGoogleCalendarId(e.target.value)}
+                          label="Calendario a usar"
+                        >
+                          <MenuItem value="primary">Calendario Principal</MenuItem>
+                          {availableCalendars.map((calendar) => (
+                            <MenuItem key={calendar.id} value={calendar.id}>
+                              {calendar.summary}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    )}
+                    
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      <Button
+                        variant="outlined"
+                        onClick={testGoogleConnection}
+                        disabled={googleConnectionStatus === 'testing'}
+                      >
+                        {googleConnectionStatus === 'testing' ? 'Probando...' : 'Probar Conexión'}
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        color="error"
+                        onClick={handleGoogleSignOut}
+                      >
+                        Desconectar
+                      </Button>
+                    </Box>
+                    
+                    {googleConnectionStatus === 'success' && (
+                      <Alert severity="success" sx={{ mt: 1 }}>
+                        Conexión exitosa con Google Calendar
+                      </Alert>
+                    )}
+                    {googleConnectionStatus === 'error' && (
+                      <Alert severity="error" sx={{ mt: 1 }}>
+                        Error de conexión. Verifica tu configuración.
+                      </Alert>
+                    )}
+                  </Grid>
+                </>
+              )}
             </Grid>
 
             <Typography variant="subtitle1" sx={{ mt: 3 }} gutterBottom>

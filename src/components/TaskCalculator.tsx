@@ -29,7 +29,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { WorkSchedule, Holiday, Meeting, CalculationResult } from '../types';
 import { DateCalculationsUtil } from '../utils/dateCalculations';
 import { HolidayService } from '../services/holidayService';
-import { NotionService } from '../services/notionService';
+import { GoogleCalendarService } from '../services/googleCalendarService';
 import { StorageUtil } from '../utils/storage';
 
 interface TaskCalculatorProps {
@@ -63,19 +63,26 @@ export const TaskCalculator: React.FC<TaskCalculatorProps> = ({ workSchedule }) 
     }
   };
 
-  const loadMeetings = async (startDate: Date, endDate: Date) => {
-    const notionApiKey = StorageUtil.loadNotionApiKey();
-    const notionDatabaseId = StorageUtil.loadNotionDatabaseId();
+  const loadEvents = async (startDate: Date, endDate: Date) => {
+    const googleAccessToken = StorageUtil.loadGoogleAccessToken();
+    const googleCalendarId = StorageUtil.loadGoogleCalendarId();
 
-    if (!notionApiKey || !notionDatabaseId) {
+    if (!googleAccessToken) {
       return [];
     }
 
     try {
-      const notionService = new NotionService(notionApiKey, notionDatabaseId);
-      return await notionService.getMeetings(startDate, endDate);
+      const googleService = new GoogleCalendarService({ 
+        accessToken: googleAccessToken,
+        calendarId: googleCalendarId || 'primary'
+      });
+      return await googleService.getEvents(startDate, endDate);
     } catch (error) {
-      console.error('Error loading meetings:', error);
+      console.error('Error loading Google Calendar events:', error);
+      if (error instanceof Error && error.message.includes('Token')) {
+        // Access token might be expired
+        StorageUtil.clearGoogleAuth();
+      }
       return [];
     }
   };
@@ -104,20 +111,20 @@ export const TaskCalculator: React.FC<TaskCalculatorProps> = ({ workSchedule }) 
         false
       );
 
-      // Cargar reuniones en el rango de fechas estimado
-      let meetingList: Meeting[] = [];
+      // Cargar eventos de calendario en el rango de fechas estimado
+      let eventList: Meeting[] = [];
       if (excludeMeetings) {
-        meetingList = await loadMeetings(startDate, preliminaryResult.endDate);
-        setMeetings(meetingList);
+        eventList = await loadEvents(startDate, preliminaryResult.endDate);
+        setMeetings(eventList);
       }
 
-      // Cálculo final con reuniones
+      // Cálculo final con eventos de calendario
       const finalResult = DateCalculationsUtil.calculateEndDate(
         startDate,
         hours,
         workSchedule,
         excludeHolidays ? holidays : [],
-        meetingList,
+        eventList,
         excludeHolidays,
         excludeMeetings
       );
@@ -202,7 +209,7 @@ export const TaskCalculator: React.FC<TaskCalculatorProps> = ({ workSchedule }) 
                   onChange={(e) => setExcludeMeetings(e.target.checked)}
                 />
               }
-              label="Excluir tiempo de reuniones (Notion)"
+              label="Excluir tiempo de eventos (Google Calendar)"
             />
           </Box>
 
@@ -296,7 +303,7 @@ export const TaskCalculator: React.FC<TaskCalculatorProps> = ({ workSchedule }) 
                     <Divider sx={{ mb: 2 }} />
                     <Typography variant="subtitle1" gutterBottom>
                       <EventIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
-                      Reuniones Excluidas ({result.meetingsExcluded.length})
+                      Eventos Excluidos ({result.meetingsExcluded.length})
                     </Typography>
                     <List dense>
                       {result.meetingsExcluded.slice(0, 5).map((meeting, index) => (
@@ -313,7 +320,7 @@ export const TaskCalculator: React.FC<TaskCalculatorProps> = ({ workSchedule }) 
                       {result.meetingsExcluded.length > 5 && (
                         <ListItem>
                           <ListItemText
-                            secondary={`... y ${result.meetingsExcluded.length - 5} reuniones más`}
+                            secondary={`... y ${result.meetingsExcluded.length - 5} eventos más`}
                           />
                         </ListItem>
                       )}
