@@ -250,19 +250,43 @@ export class GoogleAuthHelper {
   static async initializeGapi(): Promise<void> {
     return new Promise((resolve, reject) => {
       if (!window.gapi) {
-        reject(new Error('Google API library not loaded'));
+        reject(new Error('Google API library not loaded. Please check internet connection.'));
         return;
       }
 
-      window.gapi.load('auth2', {
-        callback: () => {
-          window.gapi.auth2.init({
-            client_id: this.CLIENT_ID,
-          }).then(() => {
+      if (!this.CLIENT_ID) {
+        reject(new Error('Google Client ID not configured'));
+        return;
+      }
+
+      // Load both auth2 and client libraries
+      window.gapi.load('auth2:client', {
+        callback: async () => {
+          try {
+            // Initialize client first
+            await new Promise<void>((clientResolve, clientReject) => {
+              window.gapi.client.init({
+                discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest'],
+              }).then(() => clientResolve()).catch(clientReject);
+            });
+
+            // Then initialize auth2
+            const authInstance = await window.gapi.auth2.init({
+              client_id: this.CLIENT_ID,
+              scope: this.SCOPES,
+            });
+
+            console.log('Google API initialized successfully');
             resolve();
-          }).catch(reject);
+          } catch (error) {
+            console.error('Error initializing Google API:', error);
+            reject(error);
+          }
         },
-        onerror: reject,
+        onerror: (error: any) => {
+          console.error('Error loading Google API libraries:', error);
+          reject(new Error('Failed to load Google API libraries'));
+        },
       });
     });
   }
@@ -275,15 +299,42 @@ export class GoogleAuthHelper {
     try {
       await this.initializeGapi();
       const authInstance = window.gapi.auth2.getAuthInstance();
+      
+      if (!authInstance) {
+        throw new Error('Failed to get Google Auth instance');
+      }
+
+      console.log('Starting Google sign-in process...');
       const user = await authInstance.signIn({
         scope: this.SCOPES,
       });
       
+      if (!user || !user.getAuthResponse) {
+        throw new Error('Invalid user response from Google');
+      }
+
       const authResponse = user.getAuthResponse();
+      if (!authResponse || !authResponse.access_token) {
+        throw new Error('No access token received from Google');
+      }
+
+      console.log('Google sign-in successful');
       return authResponse.access_token;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error during Google sign-in:', error);
-      throw new Error('Error al autenticar con Google Calendar');
+      
+      // Provide more specific error messages
+      if (error.error === 'popup_closed_by_user') {
+        throw new Error('Autenticación cancelada por el usuario');
+      } else if (error.error === 'popup_blocked_by_browser') {
+        throw new Error('Popup bloqueado por el navegador. Habilita popups para este sitio.');
+      } else if (error.error === 'invalid_client') {
+        throw new Error('Client ID inválido. Verifica la configuración en Google Cloud Console.');
+      } else if (error.message?.includes('Client ID not configured')) {
+        throw new Error('Client ID no configurado. Ingresa tu Client ID en la configuración.');
+      }
+      
+      throw new Error(`Error al autenticar con Google Calendar: ${error.message || 'Error desconocido'}`);
     }
   }
 

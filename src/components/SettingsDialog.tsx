@@ -125,16 +125,28 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
     }
   };
 
+  const validateGoogleClientId = (clientId: string): boolean => {
+    // Basic Google Client ID validation
+    const clientIdPattern = /^\d+-[a-zA-Z0-9_-]+\.apps\.googleusercontent\.com$/;
+    return clientIdPattern.test(clientId);
+  };
+
   const handleGoogleSignIn = async () => {
-    if (!googleClientId) {
-      setGoogleConnectionStatus('error');
+    if (!googleClientId || !googleClientId.trim()) {
+      alert('Por favor ingresa tu Google Client ID antes de autenticar.');
+      return;
+    }
+
+    const trimmedClientId = googleClientId.trim();
+    if (!validateGoogleClientId(trimmedClientId)) {
+      alert('El formato del Client ID parece incorrecto. Debe ser como: 123456789-abc123def.apps.googleusercontent.com');
       return;
     }
 
     setGoogleConnectionStatus('authenticating');
     
     try {
-      GoogleAuthHelper.setClientId(googleClientId);
+      GoogleAuthHelper.setClientId(googleClientId.trim());
       const accessToken = await GoogleAuthHelper.signIn();
       
       setGoogleAccessToken(accessToken);
@@ -149,10 +161,15 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
         await loadAvailableCalendars();
       } else {
         setGoogleConnectionStatus('error');
+        alert('No se pudo conectar con Google Calendar. Verifica los permisos de tu aplicación.');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Google sign-in error:', error);
       setGoogleConnectionStatus('error');
+      
+      // Show specific error message to user
+      const errorMessage = error.message || 'Error de autenticación desconocido';
+      alert(`Error de autenticación: ${errorMessage}`);
     }
   };
 
@@ -354,8 +371,15 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                 <Typography variant="subtitle1" gutterBottom>
                   Google Calendar (OAuth)
                 </Typography>
-                <Alert severity="warning" sx={{ mb: 2 }}>
-                  ⚠️ Requiere permisos de Google Cloud Console para crear proyecto OAuth
+                <Alert severity="info" sx={{ mb: 2 }}>
+                  <strong>Pasos para configurar Google OAuth:</strong><br/>
+                  1. Ve a <a href="https://console.cloud.google.com/" target="_blank" rel="noopener">Google Cloud Console</a><br/>
+                  2. Crea un proyecto nuevo o selecciona uno existente<br/>
+                  3. Habilita la API de Google Calendar<br/>
+                  4. Ve a "Credenciales" → "Crear credenciales" → "ID de cliente OAuth 2.0"<br/>
+                  5. Selecciona "Aplicación web" como tipo<br/>
+                  6. Agrega tu dominio a "Orígenes autorizados" (ej: http://localhost:3000)<br/>
+                  7. Copia el Client ID generado aquí abajo
                 </Alert>
               </>
             )}
