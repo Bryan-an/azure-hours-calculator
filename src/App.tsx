@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
   ThemeProvider,
-  createTheme,
   CssBaseline,
   AppBar,
   Toolbar,
@@ -16,35 +15,7 @@ import { SettingsDialog } from './components/SettingsDialog';
 import { ElectronTitleBar } from './components/ElectronTitleBar';
 import { WorkSchedule } from './types';
 import { StorageUtil } from './utils/storage';
-
-const darkTheme = createTheme({
-  palette: {
-    mode: 'dark',
-    primary: {
-      main: '#90caf9',
-    },
-    secondary: {
-      main: '#f48fb1',
-    },
-    background: {
-      default: '#121212',
-      paper: '#1e1e1e',
-    },
-  },
-  typography: {
-    fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
-  },
-  components: {
-    MuiCard: {
-      styleOverrides: {
-        root: {
-          backgroundImage:
-            'linear-gradient(rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.05))',
-        },
-      },
-    },
-  },
-});
+import { darkTheme } from './theme';
 
 function App() {
   const [workSchedule, setWorkSchedule] = useState<WorkSchedule>(
