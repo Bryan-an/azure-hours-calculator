@@ -134,7 +134,9 @@ export const useSettingsStore = create<SettingsState>()(
           const existingLogs = JSON.parse(
             localStorage.getItem('security_events_log') || '[]'
           );
+
           existingLogs.push(securityLog);
+
           localStorage.setItem(
             'security_events_log',
             JSON.stringify(existingLogs.slice(-50))
