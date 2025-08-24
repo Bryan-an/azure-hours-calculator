@@ -147,6 +147,11 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
     
     try {
       GoogleAuthHelper.setClientId(googleClientId.trim());
+      
+      // Run diagnosis before attempting to sign in
+      console.log('Running Google API diagnosis before sign-in...');
+      GoogleAuthHelper.diagnoseGoogleAPI();
+      
       const accessToken = await GoogleAuthHelper.signIn();
       
       setGoogleAccessToken(accessToken);
@@ -372,14 +377,17 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                   Google Calendar (OAuth)
                 </Typography>
                 <Alert severity="info" sx={{ mb: 2 }}>
-                  <strong>Pasos para configurar Google OAuth:</strong><br/>
+                  <strong>Configuración Google OAuth (Google Identity Services):</strong><br/>
                   1. Ve a <a href="https://console.cloud.google.com/" target="_blank" rel="noopener">Google Cloud Console</a><br/>
                   2. Crea un proyecto nuevo o selecciona uno existente<br/>
                   3. Habilita la API de Google Calendar<br/>
                   4. Ve a "Credenciales" → "Crear credenciales" → "ID de cliente OAuth 2.0"<br/>
                   5. Selecciona "Aplicación web" como tipo<br/>
-                  6. Agrega tu dominio a "Orígenes autorizados" (ej: http://localhost:3000)<br/>
-                  7. Copia el Client ID generado aquí abajo
+                  6. En "Orígenes de JavaScript autorizados" agrega:<br/>
+                  &nbsp;&nbsp;• http://localhost:3000 (desarrollo)<br/>
+                  &nbsp;&nbsp;• Tu dominio de producción (si aplica)<br/>
+                  7. Copia el Client ID generado aquí abajo<br/>
+                  <strong>Nota:</strong> Ahora usa Google Identity Services (nueva API)
                 </Alert>
               </>
             )}

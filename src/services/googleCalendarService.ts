@@ -238,13 +238,52 @@ export class GoogleCalendarService {
   }
 }
 
-// Helper class for Google OAuth authentication
+// Helper class for Google OAuth authentication using Google Identity Services (GIS)
 export class GoogleAuthHelper {
   private static CLIENT_ID: string | null = null;
   private static SCOPES = 'https://www.googleapis.com/auth/calendar.readonly';
+  private static tokenClient: any = null;
 
   static setClientId(clientId: string) {
     this.CLIENT_ID = clientId;
+  }
+
+  static diagnoseGoogleAPI(): void {
+    console.log('=== Google API Diagnosis (GIS) ===');
+    console.log('Client ID configured:', !!this.CLIENT_ID);
+    console.log('Client ID value:', this.CLIENT_ID ? `${this.CLIENT_ID.substring(0, 10)}...` : 'Not set');
+    console.log('window.gapi available:', !!window.gapi);
+    console.log('window.google available:', !!(window as any).google);
+    
+    if (window.gapi) {
+      console.log('gapi.client available:', !!window.gapi.client);
+      console.log('gapi.load function:', typeof window.gapi.load);
+    }
+
+    if ((window as any).google) {
+      console.log('google.accounts available:', !!((window as any).google.accounts));
+      if ((window as any).google.accounts) {
+        console.log('google.accounts.oauth2 available:', !!((window as any).google.accounts.oauth2));
+      }
+    }
+    console.log('Token client initialized:', !!this.tokenClient);
+    console.log('================================');
+  }
+
+  static async waitForGoogleAPI(maxWaitMs = 10000): Promise<boolean> {
+    const startTime = Date.now();
+    
+    while (Date.now() - startTime < maxWaitMs) {
+      if (window.gapi && window.gapi.load && (window as any).google && (window as any).google.accounts) {
+        console.log('Google APIs (GAPI + GIS) are ready');
+        return true;
+      }
+      console.log('Waiting for Google APIs to load...');
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+    
+    console.error('Google APIs failed to load within timeout');
+    return false;
   }
 
   static async initializeGapi(): Promise<void> {
@@ -259,27 +298,39 @@ export class GoogleAuthHelper {
         return;
       }
 
-      // Load both auth2 and client libraries
-      window.gapi.load('auth2:client', {
+      // Load client library for API calls
+      window.gapi.load('client', {
         callback: async () => {
           try {
-            // Initialize client first
-            await new Promise<void>((clientResolve, clientReject) => {
-              window.gapi.client.init({
-                discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest'],
-              }).then(() => clientResolve()).catch(clientReject);
+            // Initialize client for API calls
+            await window.gapi.client.init({
+              discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest'],
             });
 
-            // Then initialize auth2
-            const authInstance = await window.gapi.auth2.init({
+            // Initialize Google Identity Services token client
+            if (!(window as any).google || !(window as any).google.accounts) {
+              throw new Error('Google Identity Services not loaded');
+            }
+
+            this.tokenClient = (window as any).google.accounts.oauth2.initTokenClient({
               client_id: this.CLIENT_ID,
               scope: this.SCOPES,
+              callback: '', // Will be set in signIn method
             });
 
-            console.log('Google API initialized successfully');
+            console.log('Google API and GIS initialized successfully');
             resolve();
-          } catch (error) {
-            console.error('Error initializing Google API:', error);
+          } catch (error: any) {
+            console.error('Error initializing Google API/GIS:', error);
+            console.error('Initialization error details:', {
+              message: error.message,
+              stack: error.stack,
+              clientId: this.CLIENT_ID,
+              gapiLoaded: !!window.gapi,
+              googleLoaded: !!((window as any).google),
+              accountsLoaded: !!((window as any).google && (window as any).google.accounts),
+              clientAvailable: !!(window.gapi && window.gapi.client)
+            });
             reject(error);
           }
         },
@@ -297,74 +348,101 @@ export class GoogleAuthHelper {
     }
 
     try {
+      // Wait for Google APIs to be available
+      const isReady = await this.waitForGoogleAPI();
+      if (!isReady) {
+        throw new Error('Google API libraries are not available. Please check your internet connection.');
+      }
+
       await this.initializeGapi();
-      const authInstance = window.gapi.auth2.getAuthInstance();
       
-      if (!authInstance) {
-        throw new Error('Failed to get Google Auth instance');
+      if (!this.tokenClient) {
+        throw new Error('Failed to initialize Google token client');
       }
 
-      console.log('Starting Google sign-in process...');
-      const user = await authInstance.signIn({
-        scope: this.SCOPES,
+      console.log('Starting Google sign-in process with GIS...');
+      
+      return new Promise((resolve, reject) => {
+        // Set the callback for token response
+        this.tokenClient.callback = (response: any) => {
+          if (response.error) {
+            console.error('Token response error:', response);
+            reject(new Error(response.error_description || response.error));
+            return;
+          }
+          
+          if (response.access_token) {
+            console.log('Google sign-in successful with GIS');
+            resolve(response.access_token);
+          } else {
+            reject(new Error('No access token received from Google'));
+          }
+        };
+
+        // Request access token
+        this.tokenClient.requestAccessToken();
       });
-      
-      if (!user || !user.getAuthResponse) {
-        throw new Error('Invalid user response from Google');
-      }
-
-      const authResponse = user.getAuthResponse();
-      if (!authResponse || !authResponse.access_token) {
-        throw new Error('No access token received from Google');
-      }
-
-      console.log('Google sign-in successful');
-      return authResponse.access_token;
     } catch (error: any) {
       console.error('Error during Google sign-in:', error);
+      console.error('Error type:', typeof error);
+      console.error('Error constructor:', error.constructor?.name);
+      console.error('Error keys:', Object.keys(error || {}));
+      
+      // Log all error properties for debugging
+      if (error) {
+        console.log('Error properties:', {
+          message: error.message,
+          error: error.error,
+          details: error.details,
+          code: error.code,
+          status: error.status,
+          stack: error.stack
+        });
+      }
       
       // Provide more specific error messages
-      if (error.error === 'popup_closed_by_user') {
+      if (error.message?.includes('popup_closed_by_user')) {
         throw new Error('Autenticación cancelada por el usuario');
-      } else if (error.error === 'popup_blocked_by_browser') {
+      } else if (error.message?.includes('popup_blocked')) {
         throw new Error('Popup bloqueado por el navegador. Habilita popups para este sitio.');
-      } else if (error.error === 'invalid_client') {
+      } else if (error.message?.includes('invalid_client')) {
         throw new Error('Client ID inválido. Verifica la configuración en Google Cloud Console.');
       } else if (error.message?.includes('Client ID not configured')) {
         throw new Error('Client ID no configurado. Ingresa tu Client ID en la configuración.');
+      } else if (error.message?.includes('Google API library not loaded')) {
+        throw new Error('Bibliotecas de Google no cargadas. Verifica tu conexión a internet.');
+      } else if (error.message?.includes('Google Identity Services not loaded')) {
+        throw new Error('Google Identity Services no cargado. Verifica tu conexión a internet.');
       }
       
-      throw new Error(`Error al autenticar con Google Calendar: ${error.message || 'Error desconocido'}`);
+      // If we have specific error details, include them
+      const errorDetails = error.details || error.error || error.message || JSON.stringify(error);
+      throw new Error(`Error al autenticar con Google Calendar: ${errorDetails}`);
     }
   }
 
   static async signOut(): Promise<void> {
     try {
-      const authInstance = window.gapi.auth2.getAuthInstance();
-      await authInstance.signOut();
+      if ((window as any).google && (window as any).google.accounts && (window as any).google.accounts.oauth2) {
+        (window as any).google.accounts.oauth2.revoke('', () => {
+          console.log('Access token revoked');
+        });
+      }
     } catch (error) {
       console.error('Error during Google sign-out:', error);
     }
   }
 
   static isSignedIn(): boolean {
-    try {
-      const authInstance = window.gapi.auth2.getAuthInstance();
-      return authInstance.isSignedIn.get();
-    } catch (error) {
-      return false;
-    }
+    // With GIS, we don't have a persistent sign-in state
+    // This would need to be managed by storing token info
+    return false;
   }
 
   static getCurrentAccessToken(): string | null {
-    try {
-      const authInstance = window.gapi.auth2.getAuthInstance();
-      const user = authInstance.currentUser.get();
-      const authResponse = user.getAuthResponse();
-      return authResponse.access_token;
-    } catch (error) {
-      return null;
-    }
+    // With GIS, tokens are managed differently
+    // This would need to be implemented based on token storage
+    return null;
   }
 }
 
