@@ -142,6 +142,7 @@ export const EventSelectionDialog: React.FC<EventSelectionDialogProps> = ({
       onClose={handleCancel}
       maxWidth="md"
       fullWidth
+      disableRestoreFocus
       aria-labelledby="event-selection-dialog-title"
       aria-describedby="event-selection-dialog-description"
     >
@@ -168,35 +169,31 @@ export const EventSelectionDialog: React.FC<EventSelectionDialogProps> = ({
 
         {/* Control principal */}
         <Box sx={{ mb: 3, p: 2, bgcolor: 'action.hover', borderRadius: 1 }}>
-          <FormControlLabel
-            control={
-              <Switch
-                checked={localExcludeMeetings}
-                onChange={(e) => handleMasterToggle(e.target.checked)}
-                color="primary"
-                inputProps={{
-                  'aria-describedby': 'master-toggle-description'
-                }}
-              />
-            }
-            label={
-              <Box>
-                <Typography variant="subtitle1" component="div">
-                  Excluir eventos del cálculo
-                </Typography>
-                <Typography 
-                  id="master-toggle-description"
-                  variant="body2" 
-                  color="text.secondary"
-                >
-                  {localExcludeMeetings 
-                    ? `Excluyendo ${excludedCount} de ${totalCount} eventos`
-                    : 'Todos los eventos se incluyen en el cálculo'
-                  }
-                </Typography>
-              </Box>
-            }
-          />
+          <Box display="flex" alignItems="center" gap={2}>
+            <Switch
+              checked={localExcludeMeetings}
+              onChange={(e) => handleMasterToggle(e.target.checked)}
+              color="primary"
+              inputProps={{
+                'aria-describedby': 'master-toggle-description'
+              }}
+            />
+            <Box flexGrow={1}>
+              <Typography variant="subtitle1" component="div">
+                Excluir eventos del cálculo
+              </Typography>
+              <Typography 
+                id="master-toggle-description"
+                variant="body2" 
+                color="text.secondary"
+              >
+                {localExcludeMeetings 
+                  ? `Excluyendo ${excludedCount} de ${totalCount} eventos`
+                  : 'Todos los eventos se incluyen en el cálculo'
+                }
+              </Typography>
+            </Box>
+          </Box>
         </Box>
 
         {/* Controles granulares */}
@@ -297,9 +294,10 @@ export const EventSelectionDialog: React.FC<EventSelectionDialogProps> = ({
                         <ListItemText
                           id={`event-${meeting.id}-label`}
                           primary={
-                            <Box display="flex" alignItems="center" gap={1}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                               <Typography 
-                                variant="subtitle2" 
+                                variant="subtitle2"
+                                component="span"
                                 sx={{ 
                                   textDecoration: isExcluded ? 'line-through' : 'none',
                                   opacity: isExcluded ? 0.7 : 1
@@ -315,17 +313,15 @@ export const EventSelectionDialog: React.FC<EventSelectionDialogProps> = ({
                                   color="secondary"
                                 />
                               )}
-                            </Box>
+                            </span>
                           }
                           secondary={
-                            <Box>
-                              <Box display="flex" alignItems="center" gap={1} mb={0.5}>
-                                <ScheduleIcon fontSize="small" />
-                                <Typography variant="caption">
-                                  {formatEventDate(meeting.start)} • {formatEventTime(meeting)} • {formatEventDuration(meeting)}
-                                </Typography>
-                              </Box>
-                            </Box>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <ScheduleIcon fontSize="small" />
+                              <Typography variant="caption" component="span">
+                                {formatEventDate(meeting.start)} • {formatEventTime(meeting)} • {formatEventDuration(meeting)}
+                              </Typography>
+                            </span>
                           }
                         />
                       </ListItemButton>

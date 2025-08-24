@@ -32,12 +32,11 @@ import {
   CheckBox as CheckBoxIcon,
   CheckBoxOutlineBlank as CheckBoxOutlineBlankIcon,
   CalendarMonth as CalendarMonthIcon,
-  Public as PublicIcon,
-  LocationOn as LocationOnIcon
+  Public as PublicIcon
 } from '@mui/icons-material';
 import { DateCalendar } from '@mui/x-date-pickers/DateCalendar';
 import { PickersDay, PickersDayProps } from '@mui/x-date-pickers/PickersDay';
-import { format, parseISO, isSameDay } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Holiday } from '../types';
 
@@ -114,7 +113,6 @@ export const HolidaySelectionDialog: React.FC<HolidaySelectionDialogProps> = ({
   const [localExcludedDates, setLocalExcludedDates] = useState<string[]>(excludedHolidayDates);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
-  const [viewDate, setViewDate] = useState<Date>(new Date());
 
   useEffect(() => {
     setLocalExcludeHolidays(excludeHolidays);
@@ -194,6 +192,7 @@ export const HolidaySelectionDialog: React.FC<HolidaySelectionDialogProps> = ({
       onClose={handleCancel}
       maxWidth="lg"
       fullWidth
+      disableRestoreFocus
       aria-labelledby="holiday-selection-dialog-title"
       aria-describedby="holiday-selection-dialog-description"
     >
@@ -268,7 +267,6 @@ export const HolidaySelectionDialog: React.FC<HolidaySelectionDialogProps> = ({
                     <DateCalendar
                       value={selectedDate}
                       onChange={(newValue) => setSelectedDate(newValue)}
-                      onMonthChange={(newDate) => setViewDate(newDate)}
                       slots={{
                         day: HolidayDay as any,
                       }}
@@ -431,9 +429,10 @@ export const HolidaySelectionDialog: React.FC<HolidaySelectionDialogProps> = ({
                             </ListItemIcon>
                             <ListItemText
                               primary={
-                                <Box display="flex" alignItems="center" gap={1}>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                   <Typography 
-                                    variant="subtitle2" 
+                                    variant="subtitle2"
+                                    component="span"
                                     sx={{ 
                                       textDecoration: isExcluded ? 'line-through' : 'none',
                                       opacity: isExcluded ? 0.7 : 1
@@ -449,18 +448,18 @@ export const HolidaySelectionDialog: React.FC<HolidaySelectionDialogProps> = ({
                                       icon={<PublicIcon />}
                                     />
                                   )}
-                                </Box>
+                                </span>
                               }
                               secondary={
-                                <Box>
-                                  <Typography variant="caption" color="text.secondary">
+                                <span>
+                                  <Typography variant="caption" color="text.secondary" component="span">
                                     {format(holidayDate, 'EEEE, dd \'de\' MMMM \'de\' yyyy', { locale: es })}
                                   </Typography>
                                   <br />
-                                  <Typography variant="caption" color="text.secondary">
+                                  <Typography variant="caption" color="text.secondary" component="span">
                                     Tipo: {holiday.type}
                                   </Typography>
-                                </Box>
+                                </span>
                               }
                             />
                           </ListItem>

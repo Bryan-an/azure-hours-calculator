@@ -1,5 +1,5 @@
 import { addMinutes, addDays, format, differenceInMinutes } from 'date-fns';
-import { WorkSchedule, Holiday, Meeting, TaskCalculation, CalculationResult } from '../types';
+import { WorkSchedule, Holiday, Meeting, CalculationResult } from '../types';
 
 export class DateCalculationsUtil {
   static parseTimeToMinutes(timeString: string): number {
@@ -115,19 +115,18 @@ export class DateCalculationsUtil {
 
       // Restar tiempo de reuniones si está habilitado
       if (excludeMeetings) {
-        const dayMeetings = this.getMeetingsForDay(currentDate, meetings);
+        const dayMeetings = isFirstDay 
+          ? this.getMeetingsForDayAfterTime(currentDate, meetings)
+          : this.getMeetingsForDay(currentDate, meetings);
+        
         dayMeetings.forEach(meeting => {
           if (!meeting.isOptional) {
             const meetingDuration = differenceInMinutes(meeting.end, meeting.start);
-            
-            // Solo restar reuniones que ocurren después de la hora de inicio actual
-            if (isFirstDay && meeting.start < currentDate) {
-              // Si la reunión ya pasó, no restarla
-              return;
-            }
-            
             availableMinutesInDay -= meetingDuration;
-            meetingsExcluded.push(meeting);
+            // Solo agregar a la lista si no está ya incluido (evitar duplicados)
+            if (!meetingsExcluded.some(m => m.id === meeting.id)) {
+              meetingsExcluded.push(meeting);
+            }
           }
         });
       }
@@ -185,6 +184,16 @@ export class DateCalculationsUtil {
     });
   }
 
+  private static getMeetingsForDayAfterTime(currentTime: Date, meetings: Meeting[]): Meeting[] {
+    const dateString = format(currentTime, 'yyyy-MM-dd');
+    return meetings.filter(meeting => {
+      const meetingDateString = format(meeting.start, 'yyyy-MM-dd');
+      // Solo incluir meetings del mismo día que se superpongan con el tiempo de trabajo
+      // Un meeting se superpone si termina después de currentTime
+      return meetingDateString === dateString && meeting.end > currentTime;
+    });
+  }
+
   private static calculateEndTimeWithMeetings(
     startOfDay: Date,
     minutesToWork: number,
@@ -211,7 +220,7 @@ export class DateCalculationsUtil {
       return lastInterval ? lastInterval.end : this.addMinutesToDate(startOfDay, minutesToWork);
     }
 
-    const dayMeetings = this.getMeetingsForDay(startOfDay, meetings)
+    const dayMeetings = this.getMeetingsForDayAfterTime(startOfDay, meetings)
       .filter(meeting => !meeting.isOptional)
       .sort((a, b) => a.start.getTime() - b.start.getTime());
 
