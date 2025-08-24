@@ -22,7 +22,40 @@ code {
   min-height: 100vh;
 }
 
-/* Ajustes para integración con titleBarOverlay de Electron */
-body {
-  padding-top: env(titlebar-area-height, 0px);
+/* Configuración para Electron frameless window */
+.electron-app {
+  -webkit-app-region: no-drag;
+}
+
+/* Barra de título personalizada draggable */
+.electron-titlebar {
+  -webkit-app-region: drag;
+  -webkit-user-select: none;
+}
+
+/* Hacer que todos los componentes MUI sean no-draggables por defecto */
+.MuiButton-root,
+.MuiIconButton-root,
+.MuiTextField-root,
+.MuiInputBase-root,
+.MuiFormControl-root,
+.MuiSelect-root,
+.MuiMenuItem-root,
+.MuiCheckbox-root,
+.MuiSwitch-root,
+.MuiSlider-root,
+button,
+input,
+select,
+textarea {
+  -webkit-app-region: no-drag !important;
+}
+
+/* Asegurar que los elementos interactivos no sean draggables */
+a,
+label,
+[role="button"],
+[tabindex],
+.MuiButtonBase-root {
+  -webkit-app-region: no-drag !important;
 }

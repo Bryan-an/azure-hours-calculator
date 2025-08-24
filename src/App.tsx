@@ -13,6 +13,7 @@ import {
 import SettingsIcon from '@mui/icons-material/Settings';
 import { TaskCalculator } from './components/TaskCalculator';
 import { SettingsDialog } from './components/SettingsDialog';
+import { ElectronTitleBar } from './components/ElectronTitleBar';
 import { WorkSchedule } from './types';
 import { StorageUtil } from './utils/storage';
 
@@ -41,16 +42,6 @@ const darkTheme = createTheme({
         },
       },
     },
-    MuiAppBar: {
-      styleOverrides: {
-        root: {
-          // Ocultar AppBar cuando usamos titleBarOverlay
-          '&.electron-hidden': {
-            display: 'none',
-          },
-        },
-      },
-    },
   },
 });
 
@@ -68,7 +59,12 @@ function App() {
     if (savedSchedule) {
       setWorkSchedule(savedSchedule);
     }
-  }, []);
+
+    // Configurar clase CSS para Electron
+    if (isElectron) {
+      document.body.classList.add('electron-app');
+    }
+  }, [isElectron]);
 
   const handleWorkScheduleChange = (newSchedule: WorkSchedule) => {
     setWorkSchedule(newSchedule);
@@ -78,48 +74,27 @@ function App() {
     <ThemeProvider theme={darkTheme}>
       <CssBaseline />
       <div className="App">
-        {/* AppBar oculto en Electron, usamos titleBarOverlay */}
-        <AppBar 
-          position="static" 
-          elevation={1}
-          className={isElectron ? 'electron-hidden' : ''}
-        >
-          <Toolbar>
-            <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-              Azure Hours Calculator
-            </Typography>
-            <IconButton
-              size="large"
-              edge="end"
-              color="inherit"
-              aria-label="configuración"
-              onClick={() => setSettingsOpen(true)}
-            >
-              <SettingsIcon />
-            </IconButton>
-          </Toolbar>
-        </AppBar>
+        {/* Barra de título para Electron */}
+        {isElectron && <ElectronTitleBar onSettingsClick={() => setSettingsOpen(true)} />}
 
-        {/* Botón de configuración para Electron en esquina superior derecha */}
-        {isElectron && (
-          <IconButton
-            size="large"
-            color="inherit"
-            aria-label="configuración"
-            onClick={() => setSettingsOpen(true)}
-            sx={{
-              position: 'fixed',
-              top: 8,
-              right: 16,
-              zIndex: 9999,
-              backgroundColor: 'rgba(255, 255, 255, 0.1)',
-              '&:hover': {
-                backgroundColor: 'rgba(255, 255, 255, 0.2)',
-              },
-            }}
-          >
-            <SettingsIcon />
-          </IconButton>
+        {/* AppBar solo para web */}
+        {!isElectron && (
+          <AppBar position="static" elevation={1}>
+            <Toolbar>
+              <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+                Azure Hours Calculator
+              </Typography>
+              <IconButton
+                size="large"
+                edge="end"
+                color="inherit"
+                aria-label="configuración"
+                onClick={() => setSettingsOpen(true)}
+              >
+                <SettingsIcon />
+              </IconButton>
+            </Toolbar>
+          </AppBar>
         )}
 
         <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
