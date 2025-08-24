@@ -25,9 +25,29 @@ code {
 /* Configuración de drag regions para Electron */
 .MuiAppBar-root {
   -webkit-app-region: drag;
+  -webkit-user-select: none; /* Evitar selección de texto durante el arrastre */
 }
 
-.MuiAppBar-root .MuiToolbar-root,
-.MuiAppBar-root .MuiToolbar-root * {
+/* Solo el área vacía del AppBar debe ser draggable */
+.MuiAppBar-root .MuiToolbar-root {
   -webkit-app-region: no-drag;
+}
+
+/* Los elementos interactivos no deben ser draggables */
+.MuiAppBar-root button,
+.MuiAppBar-root .MuiIconButton-root,
+.MuiAppBar-root .MuiTypography-root {
+  -webkit-app-region: no-drag;
+}
+
+/* Área de arrastre específica */
+.drag-region {
+  -webkit-app-region: drag;
+  -webkit-user-select: none;
+  height: 100%;
+  width: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: -1;
 }

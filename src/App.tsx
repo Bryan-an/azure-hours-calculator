@@ -13,8 +13,10 @@ import {
 import SettingsIcon from '@mui/icons-material/Settings';
 import { TaskCalculator } from './components/TaskCalculator';
 import { SettingsDialog } from './components/SettingsDialog';
+import { DragRegion } from './components/DragRegion';
 import { WorkSchedule } from './types';
 import { StorageUtil } from './utils/storage';
+import { electronUtils } from './utils/electronUtils';
 
 const darkTheme = createTheme({
   palette: {
@@ -49,10 +51,10 @@ const darkTheme = createTheme({
               paddingTop: '40px',
             },
           },
-          WebkitAppRegion: 'drag',
           '& .MuiToolbar-root': {
-            WebkitAppRegion: 'no-drag',
             minHeight: '48px !important',
+            position: 'relative',
+            zIndex: 1,
           },
         },
       },
@@ -80,6 +82,12 @@ function App() {
     setWorkSchedule(newSchedule);
   };
 
+  const handleTitleBarDoubleClick = () => {
+    if (isElectron) {
+      electronUtils.toggleMaximize();
+    }
+  };
+
   return (
     <ThemeProvider theme={darkTheme}>
       <CssBaseline />
@@ -88,7 +96,9 @@ function App() {
           position="static" 
           elevation={1}
           className={isElectron && isMacOS ? 'electron-darwin-appbar' : ''}
+          sx={{ position: 'relative' }}
         >
+          <DragRegion onDoubleClick={handleTitleBarDoubleClick} />
           <Toolbar>
             <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
               Azure Hours Calculator
