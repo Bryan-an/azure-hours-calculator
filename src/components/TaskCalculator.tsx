@@ -166,15 +166,15 @@ export const TaskCalculator: React.FC = () => {
       const hours = parseFloat(estimatedHours);
 
       // Primera estimación para determinar el rango de fechas para cargar reuniones
-      const preliminaryResult = DateCalculationsUtil.calculateEndDate(
+      const preliminaryResult = DateCalculationsUtil.calculateEndDate({
         startDate,
-        hours,
-        workSchedule,
-        excludeHolidays ? holidays : [],
-        [],
+        estimatedHours: hours,
+        schedule: workSchedule,
+        holidays: excludeHolidays ? holidays : [],
+        meetings: [],
         excludeHolidays,
-        false
-      );
+        excludeMeetings: false,
+      });
 
       // Cargar eventos de calendario en el rango de fechas estimado
       let eventList: Meeting[] = [];
@@ -214,15 +214,15 @@ export const TaskCalculator: React.FC = () => {
       // Si excludeHolidays es false, effectiveHolidays queda vacío (no excluir nada)
 
       // Cálculo final con eventos de calendario y feriados
-      const finalResult = DateCalculationsUtil.calculateEndDate(
+      const finalResult = DateCalculationsUtil.calculateEndDate({
         startDate,
-        hours,
-        workSchedule,
-        effectiveHolidays,
-        effectiveMeetings,
-        effectiveHolidays.length > 0,
-        true // Siempre true cuando hay meetings a excluir
-      );
+        estimatedHours: hours,
+        schedule: workSchedule,
+        holidays: effectiveHolidays,
+        meetings: effectiveMeetings,
+        excludeHolidays: effectiveHolidays.length > 0,
+        excludeMeetings: true, // Siempre true cuando hay meetings a excluir
+      });
 
       setResult(finalResult);
     } catch (error) {

@@ -1,6 +1,26 @@
 import { addMinutes, addDays, format, differenceInMinutes } from 'date-fns';
 import { WorkSchedule, Holiday, Meeting, CalculationResult } from '../types';
 
+interface CalculateEndDateParams {
+  startDate: Date;
+  estimatedHours: number;
+  schedule: WorkSchedule;
+  holidays?: Holiday[];
+  meetings?: Meeting[];
+  excludeHolidays?: boolean;
+  excludeMeetings?: boolean;
+}
+
+interface GetWorkingHoursParams {
+  startDate: Date;
+  endDate: Date;
+  schedule: WorkSchedule;
+  holidays?: Holiday[];
+  meetings?: Meeting[];
+  excludeHolidays?: boolean;
+  excludeMeetings?: boolean;
+}
+
 export class DateCalculationsUtil {
   static parseTimeToMinutes(timeString: string): number {
     const [hours, minutes] = timeString.split(':').map(Number);
@@ -28,19 +48,21 @@ export class DateCalculationsUtil {
     return schedule.workDays.includes(dayOfWeek);
   }
 
-  static calculateEndDate(
-    startDate: Date,
-    estimatedHours: number,
-    schedule: WorkSchedule,
-    holidays: Holiday[] = [],
-    meetings: Meeting[] = [],
-    excludeHolidays: boolean = true,
-    excludeMeetings: boolean = true
-  ): CalculationResult {
+  static calculateEndDate(params: CalculateEndDateParams): CalculationResult {
+    const {
+      startDate,
+      estimatedHours,
+      schedule,
+      holidays = [],
+      meetings = [],
+      excludeHolidays = true,
+      excludeMeetings = true,
+    } = params;
+
     const dailyWorkingMinutes = this.getDailyWorkingMinutes(schedule);
     const totalMinutesNeeded = estimatedHours * 60;
-
     let currentDate = new Date(startDate);
+
     // Normalizar segundos y milisegundos para evitar desajustes
     currentDate.setSeconds(0, 0);
     let remainingMinutes = totalMinutesNeeded;
@@ -68,6 +90,7 @@ export class DateCalculationsUtil {
       // Verificar si es feriado
       if (excludeHolidays) {
         const holiday = this.isHoliday(currentDate, holidays);
+
         if (holiday) {
           holidaysExcluded.push(holiday);
           currentDate = addDays(currentDate, 1);
@@ -97,6 +120,7 @@ export class DateCalculationsUtil {
         const [lunchStartHour, lunchStartMinute] = schedule.lunchStart
           .split(':')
           .map(Number);
+
         const [lunchEndHour, lunchEndMinute] = schedule.lunchEnd
           .split(':')
           .map(Number);
@@ -108,10 +132,12 @@ export class DateCalculationsUtil {
         lunchEnd.setHours(lunchEndHour, lunchEndMinute, 0, 0);
 
         let lunchMinutesToSubtract = 0;
+
         if (currentDate < lunchEnd) {
           // El almuerzo está después de la hora de inicio
           const lunchStartTime =
             currentDate < lunchStart ? lunchStart : currentDate;
+
           lunchMinutesToSubtract = differenceInMinutes(
             lunchEnd,
             lunchStartTime
@@ -136,7 +162,9 @@ export class DateCalculationsUtil {
               meeting.end,
               meeting.start
             );
+
             availableMinutesInDay -= meetingDuration;
+
             // Solo agregar a la lista si no está ya incluido (evitar duplicados)
             if (!meetingsExcluded.some((m) => m.id === meeting.id)) {
               meetingsExcluded.push(meeting);
@@ -198,6 +226,7 @@ export class DateCalculationsUtil {
 
   private static getMeetingsForDay(date: Date, meetings: Meeting[]): Meeting[] {
     const dateString = format(date, 'yyyy-MM-dd');
+
     return meetings.filter((meeting) => {
       const meetingDateString = format(meeting.start, 'yyyy-MM-dd');
       return meetingDateString === dateString;
@@ -209,6 +238,7 @@ export class DateCalculationsUtil {
     meetings: Meeting[]
   ): Meeting[] {
     const dateString = format(currentTime, 'yyyy-MM-dd');
+
     return meetings.filter((meeting) => {
       const meetingDateString = format(meeting.start, 'yyyy-MM-dd');
       // Solo incluir meetings del mismo día que se superpongan con el tiempo de trabajo
@@ -232,6 +262,7 @@ export class DateCalculationsUtil {
         [],
         startOfDay
       );
+
       let remainingMinutes = minutesToWork;
 
       for (const interval of workIntervals) {
@@ -248,6 +279,7 @@ export class DateCalculationsUtil {
       }
 
       const lastInterval = workIntervals[workIntervals.length - 1];
+
       return lastInterval
         ? lastInterval.end
         : this.addMinutesToDate(startOfDay, minutesToWork);
@@ -285,6 +317,7 @@ export class DateCalculationsUtil {
     // Si llegamos aquí, necesitamos más tiempo del disponible en el día
     // Retornar el final del último intervalo de trabajo
     const lastInterval = workIntervals[workIntervals.length - 1];
+
     return lastInterval
       ? lastInterval.end
       : this.addMinutesToDate(startOfDay, minutesToWork);
@@ -298,9 +331,11 @@ export class DateCalculationsUtil {
   ): Array<{ start: Date; end: Date }> {
     const [startHour, startMinute] = schedule.startTime.split(':').map(Number);
     const [endHour, endMinute] = schedule.endTime.split(':').map(Number);
+
     const [lunchStartHour, lunchStartMinute] = schedule.lunchStart
       .split(':')
       .map(Number);
+
     const [lunchEndHour, lunchEndMinute] = schedule.lunchEnd
       .split(':')
       .map(Number);
@@ -308,6 +343,7 @@ export class DateCalculationsUtil {
     const dayStart = actualStartTime
       ? new Date(actualStartTime)
       : new Date(date);
+
     if (!actualStartTime) {
       dayStart.setHours(startHour, startMinute, 0, 0);
     }
@@ -349,6 +385,7 @@ export class DateCalculationsUtil {
           end: new Date(unavailable.start),
         });
       }
+
       // Mover el inicio actual al final del período no disponible
       if (unavailable.end > currentStart) {
         currentStart = unavailable.end;
@@ -367,22 +404,31 @@ export class DateCalculationsUtil {
   }
 
   static formatDateForDisplay(date: Date): string {
-    return format(date, 'dd/MM/yyyy HH:mm');
+    const locale = navigator.language || 'en-US';
+    const isEnglish = locale.startsWith('en');
+    const datePattern = isEnglish ? 'MM/dd/yyyy' : 'dd/MM/yyyy';
+
+    return format(date, `${datePattern} h:mm a`);
   }
 
   static formatDateOnly(date: Date): string {
-    return format(date, 'dd/MM/yyyy');
+    const locale = navigator.language || 'en-US';
+    const isEnglish = locale.startsWith('en');
+    const datePattern = isEnglish ? 'MM/dd/yyyy' : 'dd/MM/yyyy';
+
+    return format(date, datePattern);
   }
 
-  static getWorkingHoursInPeriod(
-    startDate: Date,
-    endDate: Date,
-    schedule: WorkSchedule,
-    holidays: Holiday[] = [],
-    meetings: Meeting[] = [],
-    excludeHolidays: boolean = true,
-    excludeMeetings: boolean = true
-  ): number {
+  static getWorkingHoursInPeriod(params: GetWorkingHoursParams): number {
+    const {
+      startDate,
+      endDate,
+      schedule,
+      holidays = [],
+      meetings = [],
+      excludeHolidays = true,
+      excludeMeetings = true,
+    } = params;
     const dailyWorkingMinutes = this.getDailyWorkingMinutes(schedule);
     let currentDate = new Date(startDate);
     let totalWorkingMinutes = 0;
