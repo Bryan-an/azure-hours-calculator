@@ -19,6 +19,7 @@ import {
   Chip,
 } from '@mui/material';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
+import { EventSelectionDialog } from './EventSelectionDialog';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { es } from 'date-fns/locale';
@@ -42,11 +43,13 @@ export const TaskCalculator: React.FC<TaskCalculatorProps> = ({ workSchedule }) 
   const [startDate, setStartDate] = useState<Date>(new Date());
   const [excludeHolidays, setExcludeHolidays] = useState<boolean>(true);
   const [excludeMeetings, setExcludeMeetings] = useState<boolean>(true);
+  const [excludedMeetingIds, setExcludedMeetingIds] = useState<string[]>([]);
   const [isCalculating, setIsCalculating] = useState<boolean>(false);
   const [result, setResult] = useState<CalculationResult | null>(null);
   const [error, setError] = useState<string>('');
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [meetings, setMeetings] = useState<Meeting[]>([]);
+  const [eventSelectionDialogOpen, setEventSelectionDialogOpen] = useState<boolean>(false);
 
   const holidayService = new HolidayService();
 
@@ -161,15 +164,28 @@ export const TaskCalculator: React.FC<TaskCalculatorProps> = ({ workSchedule }) 
         setMeetings(eventList);
       }
 
+      // Filtrar meetings basado en la selección granular
+      let effectiveMeetings: Meeting[] = [];
+      if (excludeMeetings) {
+        if (excludedMeetingIds.length > 0) {
+          // Exclusión granular: solo excluir los eventos específicamente seleccionados
+          effectiveMeetings = eventList.filter(m => excludedMeetingIds.includes(m.id));
+        } else {
+          // Exclusión completa: excluir todos los eventos
+          effectiveMeetings = eventList;
+        }
+      }
+      // Si excludeMeetings es false, effectiveMeetings queda vacío (no excluir nada)
+
       // Cálculo final con eventos de calendario
       const finalResult = DateCalculationsUtil.calculateEndDate(
         startDate,
         hours,
         workSchedule,
         excludeHolidays ? holidays : [],
-        eventList,
+        effectiveMeetings,
         excludeHolidays,
-        excludeMeetings
+        true // Siempre true cuando hay meetings a excluir
       );
 
       setResult(finalResult);
@@ -204,6 +220,39 @@ export const TaskCalculator: React.FC<TaskCalculatorProps> = ({ workSchedule }) 
       case 'none':
       default:
         return 'calendario';
+    }
+  };
+
+  const handleEventSelectionChange = (newExcludeMeetings: boolean, newExcludedIds: string[]) => {
+    setExcludeMeetings(newExcludeMeetings);
+    setExcludedMeetingIds(newExcludedIds);
+  };
+
+  const handleMainExcludeMeetingsChange = (checked: boolean) => {
+    setExcludeMeetings(checked);
+    if (!checked) {
+      // Limpiar selección granular cuando se desactiva la exclusión
+      setExcludedMeetingIds([]);
+    }
+  };
+
+  const handleOpenEventSelection = () => {
+    setEventSelectionDialogOpen(true);
+  };
+
+  const getEventSelectionLabel = () => {
+    const calendarLabel = getCalendarSourceLabel();
+    if (!excludeMeetings) return `Incluir tiempo de eventos (${calendarLabel})`;
+    
+    const totalEvents = meetings.length;
+    if (totalEvents === 0) return `Excluir tiempo de eventos (${calendarLabel})`;
+    
+    if (excludedMeetingIds.length === 0) {
+      return `Excluir todos los eventos (${calendarLabel})`;
+    } else if (excludedMeetingIds.length === totalEvents) {
+      return `Excluir todos los eventos (${calendarLabel})`;
+    } else {
+      return `Excluir ${excludedMeetingIds.length} de ${totalEvents} eventos (${calendarLabel})`;
     }
   };
 
@@ -260,15 +309,27 @@ export const TaskCalculator: React.FC<TaskCalculatorProps> = ({ workSchedule }) 
               }
               label="Excluir feriados ecuatorianos"
             />
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={excludeMeetings}
-                  onChange={(e) => setExcludeMeetings(e.target.checked)}
-                />
-              }
-              label={`Excluir tiempo de eventos (${getCalendarSourceLabel()})`}
-            />
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={excludeMeetings}
+                    onChange={(e) => handleMainExcludeMeetingsChange(e.target.checked)}
+                  />
+                }
+                label={getEventSelectionLabel()}
+                sx={{ flexGrow: 1 }}
+              />
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={handleOpenEventSelection}
+                disabled={!excludeMeetings}
+                sx={{ ml: 2, minWidth: 'auto', textTransform: 'none' }}
+              >
+                {meetings.length === 0 ? 'Configurar' : 'Configurar'}
+              </Button>
+            </Box>
           </Box>
 
           <Box sx={{ mt: 3, mb: 2 }}>
@@ -390,6 +451,17 @@ export const TaskCalculator: React.FC<TaskCalculatorProps> = ({ workSchedule }) 
           )}
         </CardContent>
       </Card>
+
+      {/* Diálogo de selección granular de eventos */}
+      <EventSelectionDialog
+        open={eventSelectionDialogOpen}
+        onClose={() => setEventSelectionDialogOpen(false)}
+        meetings={meetings}
+        excludeMeetings={excludeMeetings}
+        excludedMeetingIds={excludedMeetingIds}
+        onSelectionChange={handleEventSelectionChange}
+        calendarSource={getCalendarSourceLabel()}
+      />
     </LocalizationProvider>
   );
 };

@@ -28,6 +28,7 @@ export interface TaskCalculation {
   endDate?: Date;
   excludeHolidays: boolean;
   excludeMeetings: boolean;
+  excludedMeetingIds?: string[]; // IDs de eventos específicamente excluidos
   holidays: Holiday[];
   meetings: Meeting[];
 }
