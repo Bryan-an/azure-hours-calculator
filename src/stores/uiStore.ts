@@ -19,10 +19,6 @@ interface UIState {
     severity: 'success' | 'error' | 'warning' | 'info';
   } | null;
 
-  // UI preferences (non-persistent)
-  sidebarCollapsed: boolean;
-  isDarkMode: boolean;
-
   // Actions
   setSettingsOpen: (open: boolean) => void;
   setHolidaySelectionOpen: (open: boolean) => void;
@@ -31,13 +27,13 @@ interface UIState {
   setLoadingHolidays: (loading: boolean) => void;
   setLoadingEvents: (loading: boolean) => void;
   setSavingSettings: (saving: boolean) => void;
+
   showNotification: (
     message: string,
     severity: 'success' | 'error' | 'warning' | 'info'
   ) => void;
+
   hideNotification: () => void;
-  setSidebarCollapsed: (collapsed: boolean) => void;
-  setDarkMode: (darkMode: boolean) => void;
   resetUIState: () => void;
 }
 
@@ -51,8 +47,6 @@ export const useUIStore = create<UIState>((set) => ({
   isLoadingEvents: false,
   isSavingSettings: false,
   notification: null,
-  sidebarCollapsed: false,
-  isDarkMode: true, // Default to dark mode
 
   // Actions
   setSettingsOpen: (open) => set({ settingsOpen: open }),
@@ -80,10 +74,6 @@ export const useUIStore = create<UIState>((set) => ({
 
   hideNotification: () => set({ notification: null }),
 
-  setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
-
-  setDarkMode: (darkMode) => set({ isDarkMode: darkMode }),
-
   resetUIState: () =>
     set({
       settingsOpen: false,
@@ -94,7 +84,5 @@ export const useUIStore = create<UIState>((set) => ({
       isLoadingEvents: false,
       isSavingSettings: false,
       notification: null,
-      sidebarCollapsed: false,
-      isDarkMode: true,
     }),
 }));

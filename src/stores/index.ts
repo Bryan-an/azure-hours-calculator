@@ -1,6 +1,7 @@
 // Central exports for all stores
 export { useSettingsStore } from './settingsStore';
 export { useUIStore } from './uiStore';
+export { usePreferencesStore } from './preferencesStore';
 
 // Store initialization utility
 import { useSettingsStore } from './settingsStore';
