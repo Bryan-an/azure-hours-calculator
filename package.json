@@ -2,6 +2,23 @@
   "name": "azure-hours-calculator",
   "version": "1.0.0",
   "description": "Aplicación de escritorio para calcular fechas de inicio y fin de tareas en Azure DevOps",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Bryan-an/azure-hours-calculator.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Bryan-an/azure-hours-calculator/issues"
+  },
+  "author": "Bryan Andagoya <bryan.andagoya@example.com>",
+  "keywords": [
+    "azure",
+    "devops",
+    "calculator",
+    "electron",
+    "react",
+    "typescript",
+    "productivity"
+  ],
   "main": "public/electron.js",
   "scripts": {
     "start": "react-scripts start",

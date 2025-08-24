@@ -113,22 +113,22 @@ Al abrir la aplicación por primera vez:
 
 ### 2. Configurar Integraciones (Opcional)
 
-#### Notion (Para Calendario de Reuniones)
+#### Google Calendar (Para Eventos y Reuniones)
 
-1. Ve a [Notion Developers](https://www.notion.so/my-integrations)
-2. Crear nueva integración:
+1. Ve a [Google Cloud Console](https://console.cloud.google.com/)
+2. Crear nuevo proyecto:
    - Nombre: "Azure Hours Calculator"
-   - Workspace: Tu workspace
-   - Capacidades: Leer contenido
-3. Copiar el "Internal Integration Token"
-4. En tu base de datos de calendario en Notion:
-   - Clic en "..." → "Add connections"
-   - Seleccionar tu integración
-5. Copiar el Database ID de la URL de tu base de datos
-6. En la aplicación:
-   - Pegar API Key en "API Key de Notion"
-   - Pegar Database ID en "Database ID de Notion"
-   - Hacer clic en "Probar Conexión"
+   - Habilitar Google Calendar API
+3. Configurar OAuth 2.0:
+   - Ir a "Credenciales"
+   - Crear credenciales → OAuth 2.0 Client ID
+   - Tipo: Aplicación de escritorio
+   - Copiar el Client ID
+4. En la aplicación:
+   - Pegar Client ID en "Google Client ID"
+   - Hacer clic en "Conectar con Google"
+   - Autorizar acceso a tu calendario
+   - Seleccionar calendario específico (opcional)
 
 #### Calendarific (Para Feriados Actualizados)
 
@@ -137,7 +137,7 @@ Al abrir la aplicación por primera vez:
 3. Copiar tu API Key
 4. En la aplicación, pegar en "API Key de Calendarific"
 
-**Nota**: Si no configuras Calendarific, la aplicación usará una lista predeterminada de feriados ecuatorianos.
+**Nota**: Si no configuras Calendarific, la aplicación usará una lista predeterminada de feriados ecuatorianos para 2025, incluyendo Carnaval y Semana Santa.
 
 ## Uso Básico
 
@@ -153,8 +153,9 @@ La aplicación te mostrará:
 - Fecha estimada de finalización
 - Días laborales utilizados
 - Horas de trabajo efectivas
-- Feriados que fueron excluidos
-- Reuniones que fueron excluidas
+- Feriados que fueron excluidos (con selección granular)
+- Eventos de Google Calendar que fueron excluidos
+- Calendario visual con días destacados
 
 ## Solución de Problemas
 
@@ -178,11 +179,12 @@ npm install --legacy-peer-deps
 - En macOS, asegúrate de tener el modo oscuro habilitado en Preferencias del Sistema
 - La aplicación hereda automáticamente el tema del sistema
 
-### Problemas con Notion
+### Problemas con Google Calendar
 
-- Verifica que el Database ID sea correcto (formato: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
-- Asegúrate de que la integración tenga acceso a la base de datos
-- La base de datos debe tener columnas llamadas "Date", "Title", y "Optional"
+- Verifica que el Client ID sea correcto
+- Asegúrate de autorizar el acceso cuando se abra el navegador
+- Si aparece "Esta app no ha sido verificada", haz clic en "Avanzado" → "Ir a Azure Hours Calculator (no seguro)"
+- La aplicación solo lee eventos, no modifica nada en tu calendario
 
 ### Problemas con feriados
 
