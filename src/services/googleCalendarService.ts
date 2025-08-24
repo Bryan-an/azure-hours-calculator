@@ -270,13 +270,23 @@ export class GoogleAuthHelper {
     console.log('================================');
   }
 
+  static isElectron(): boolean {
+    return !!(window as any).require || !!(window as any).electronAPI || navigator.userAgent.includes('Electron');
+  }
+
   static async waitForGoogleAPI(maxWaitMs = 10000): Promise<boolean> {
     const startTime = Date.now();
+    const isElectron = this.isElectron();
+    
+    console.log('Environment detected:', isElectron ? 'Electron' : 'Browser');
     
     while (Date.now() - startTime < maxWaitMs) {
-      if (window.gapi && window.gapi.load && (window as any).google && (window as any).google.accounts) {
-        console.log('Google APIs (GAPI + GIS) are ready');
-        return true;
+      if (window.gapi && window.gapi.load) {
+        // In Electron, we might not have google.accounts due to CORS, so we'll use a fallback
+        if (isElectron || ((window as any).google && (window as any).google.accounts)) {
+          console.log('Google APIs are ready');
+          return true;
+        }
       }
       console.log('Waiting for Google APIs to load...');
       await new Promise(resolve => setTimeout(resolve, 500));
@@ -287,6 +297,8 @@ export class GoogleAuthHelper {
   }
 
   static async initializeGapi(): Promise<void> {
+    const isElectron = this.isElectron();
+    
     return new Promise((resolve, reject) => {
       if (!window.gapi) {
         reject(new Error('Google API library not loaded. Please check internet connection.'));
@@ -307,19 +319,27 @@ export class GoogleAuthHelper {
               discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest'],
             });
 
-            // Initialize Google Identity Services token client
-            if (!(window as any).google || !(window as any).google.accounts) {
-              throw new Error('Google Identity Services not loaded');
+            // Try to initialize Google Identity Services, but fallback for Electron
+            if (isElectron) {
+              console.log('Electron detected: Using OAuth popup fallback method');
+              // In Electron, we'll use a manual OAuth flow
+              console.log('Google API initialized successfully (Electron mode)');
+              resolve();
+            } else {
+              // Browser environment - try to use GIS
+              if (!(window as any).google || !(window as any).google.accounts) {
+                throw new Error('Google Identity Services not loaded');
+              }
+
+              this.tokenClient = (window as any).google.accounts.oauth2.initTokenClient({
+                client_id: this.CLIENT_ID,
+                scope: this.SCOPES,
+                callback: '', // Will be set in signIn method
+              });
+
+              console.log('Google API and GIS initialized successfully (Browser mode)');
+              resolve();
             }
-
-            this.tokenClient = (window as any).google.accounts.oauth2.initTokenClient({
-              client_id: this.CLIENT_ID,
-              scope: this.SCOPES,
-              callback: '', // Will be set in signIn method
-            });
-
-            console.log('Google API and GIS initialized successfully');
-            resolve();
           } catch (error: any) {
             console.error('Error initializing Google API/GIS:', error);
             console.error('Initialization error details:', {
@@ -329,9 +349,17 @@ export class GoogleAuthHelper {
               gapiLoaded: !!window.gapi,
               googleLoaded: !!((window as any).google),
               accountsLoaded: !!((window as any).google && (window as any).google.accounts),
-              clientAvailable: !!(window.gapi && window.gapi.client)
+              clientAvailable: !!(window.gapi && window.gapi.client),
+              isElectron: isElectron
             });
-            reject(error);
+            
+            // If we're in Electron and GIS fails, that's expected - continue anyway
+            if (isElectron) {
+              console.log('GIS initialization failed in Electron - this is expected, using fallback');
+              resolve();
+            } else {
+              reject(error);
+            }
           }
         },
         onerror: (error: any) => {
@@ -355,33 +383,41 @@ export class GoogleAuthHelper {
       }
 
       await this.initializeGapi();
-      
-      if (!this.tokenClient) {
-        throw new Error('Failed to initialize Google token client');
+      const isElectron = this.isElectron();
+
+      if (isElectron) {
+        // Electron: Use manual OAuth flow
+        console.log('Starting Google sign-in process with manual OAuth (Electron)...');
+        return await this.signInElectron();
+      } else {
+        // Browser: Use GIS
+        if (!this.tokenClient) {
+          throw new Error('Failed to initialize Google token client');
+        }
+
+        console.log('Starting Google sign-in process with GIS (Browser)...');
+        
+        return new Promise((resolve, reject) => {
+          // Set the callback for token response
+          this.tokenClient.callback = (response: any) => {
+            if (response.error) {
+              console.error('Token response error:', response);
+              reject(new Error(response.error_description || response.error));
+              return;
+            }
+            
+            if (response.access_token) {
+              console.log('Google sign-in successful with GIS');
+              resolve(response.access_token);
+            } else {
+              reject(new Error('No access token received from Google'));
+            }
+          };
+
+          // Request access token
+          this.tokenClient.requestAccessToken();
+        });
       }
-
-      console.log('Starting Google sign-in process with GIS...');
-      
-      return new Promise((resolve, reject) => {
-        // Set the callback for token response
-        this.tokenClient.callback = (response: any) => {
-          if (response.error) {
-            console.error('Token response error:', response);
-            reject(new Error(response.error_description || response.error));
-            return;
-          }
-          
-          if (response.access_token) {
-            console.log('Google sign-in successful with GIS');
-            resolve(response.access_token);
-          } else {
-            reject(new Error('No access token received from Google'));
-          }
-        };
-
-        // Request access token
-        this.tokenClient.requestAccessToken();
-      });
     } catch (error: any) {
       console.error('Error during Google sign-in:', error);
       console.error('Error type:', typeof error);
@@ -443,6 +479,103 @@ export class GoogleAuthHelper {
     // With GIS, tokens are managed differently
     // This would need to be implemented based on token storage
     return null;
+  }
+
+  // Electron-specific OAuth flow using popup window
+  static async signInElectron(): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const redirectUri = 'http://localhost:3000/oauth-callback.html';
+      const scope = encodeURIComponent(this.SCOPES);
+      const responseType = 'token';
+      
+      const authUrl = `https://accounts.google.com/oauth/v2/authorize?` +
+        `client_id=${this.CLIENT_ID}&` +
+        `redirect_uri=${encodeURIComponent(redirectUri)}&` +
+        `scope=${scope}&` +
+        `response_type=${responseType}&` +
+        `include_granted_scopes=true`;
+
+      console.log('Opening OAuth popup for Electron...');
+      
+      // Create a popup window for OAuth
+      const popup = window.open(
+        authUrl,
+        'google-oauth',
+        'width=500,height=600,scrollbars=yes,resizable=yes'
+      );
+
+      if (!popup) {
+        reject(new Error('Popup bloqueado por el navegador. Habilita popups para este sitio.'));
+        return;
+      }
+
+      // Monitor the popup for the OAuth callback
+      const checkClosed = setInterval(() => {
+        if (popup.closed) {
+          clearInterval(checkClosed);
+          reject(new Error('Autenticación cancelada por el usuario'));
+        }
+      }, 1000);
+
+      // Listen for the OAuth callback
+      const messageListener = (event: MessageEvent) => {
+        if (event.origin !== window.location.origin) {
+          return;
+        }
+
+        if (event.data.type === 'oauth-callback') {
+          clearInterval(checkClosed);
+          popup.close();
+          window.removeEventListener('message', messageListener);
+
+          if (event.data.error) {
+            reject(new Error(event.data.error_description || event.data.error));
+          } else if (event.data.access_token) {
+            resolve(event.data.access_token);
+          } else {
+            reject(new Error('No access token received from Google'));
+          }
+        }
+      };
+
+      window.addEventListener('message', messageListener);
+
+      // Fallback: try to detect URL changes in popup
+      const urlChecker = setInterval(() => {
+        try {
+          if (popup.location && popup.location.href.includes('access_token=')) {
+            clearInterval(urlChecker);
+            clearInterval(checkClosed);
+            window.removeEventListener('message', messageListener);
+
+            const url = new URL(popup.location.href);
+            const hash = new URLSearchParams(url.hash.substring(1));
+            const accessToken = hash.get('access_token');
+
+            popup.close();
+
+            if (accessToken) {
+              resolve(accessToken);
+            } else {
+              reject(new Error('No access token found in OAuth response'));
+            }
+          }
+        } catch (e) {
+          // Cross-origin access denied - this is expected until the redirect
+        }
+      }, 1000);
+
+      // Cleanup after 5 minutes
+      setTimeout(() => {
+        clearInterval(checkClosed);
+        clearInterval(urlChecker);
+        window.removeEventListener('message', messageListener);
+        if (!popup.closed) {
+          popup.close();
+        }
+        reject(new Error('Timeout de autenticación'));
+      }, 300000);
+    });
   }
 }
 
