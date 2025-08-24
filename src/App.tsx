@@ -13,10 +13,8 @@ import {
 import SettingsIcon from '@mui/icons-material/Settings';
 import { TaskCalculator } from './components/TaskCalculator';
 import { SettingsDialog } from './components/SettingsDialog';
-import { DragRegion } from './components/DragRegion';
 import { WorkSchedule } from './types';
 import { StorageUtil } from './utils/storage';
-import { electronUtils } from './utils/electronUtils';
 
 const darkTheme = createTheme({
   palette: {
@@ -46,13 +44,9 @@ const darkTheme = createTheme({
     MuiAppBar: {
       styleOverrides: {
         root: {
-          '&.electron-darwin-appbar': {
-            '& .MuiToolbar-root': {
-              paddingTop: '40px',
-            },
-          },
-          '& .MuiToolbar-root': {
-            minHeight: '48px !important',
+          // Ocultar AppBar cuando usamos titleBarOverlay
+          '&.electron-hidden': {
+            display: 'none',
           },
         },
       },
@@ -80,23 +74,16 @@ function App() {
     setWorkSchedule(newSchedule);
   };
 
-  const handleTitleBarDoubleClick = () => {
-    if (isElectron) {
-      electronUtils.toggleMaximize();
-    }
-  };
-
   return (
     <ThemeProvider theme={darkTheme}>
       <CssBaseline />
       <div className="App">
+        {/* AppBar oculto en Electron, usamos titleBarOverlay */}
         <AppBar 
           position="static" 
           elevation={1}
-          className={isElectron && isMacOS ? 'electron-darwin-appbar' : ''}
-          sx={{ position: 'relative' }}
+          className={isElectron ? 'electron-hidden' : ''}
         >
-          <DragRegion onDoubleClick={handleTitleBarDoubleClick} />
           <Toolbar>
             <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
               Azure Hours Calculator
@@ -112,6 +99,28 @@ function App() {
             </IconButton>
           </Toolbar>
         </AppBar>
+
+        {/* Botón de configuración para Electron en esquina superior derecha */}
+        {isElectron && (
+          <IconButton
+            size="large"
+            color="inherit"
+            aria-label="configuración"
+            onClick={() => setSettingsOpen(true)}
+            sx={{
+              position: 'fixed',
+              top: 8,
+              right: 16,
+              zIndex: 9999,
+              backgroundColor: 'rgba(255, 255, 255, 0.1)',
+              '&:hover': {
+                backgroundColor: 'rgba(255, 255, 255, 0.2)',
+              },
+            }}
+          >
+            <SettingsIcon />
+          </IconButton>
+        )}
 
         <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
           <Box sx={{ mb: 3 }}>

@@ -22,27 +22,7 @@ code {
   min-height: 100vh;
 }
 
-/* Solución directa para drag en Electron basada en GitHub issues */
-html {
-  -webkit-app-region: drag;
-}
-
-/* Hacer que todo el contenido sea no-draggable por defecto */
-body, #root, * {
-  -webkit-app-region: no-drag;
-}
-
-/* Solo el AppBar debe ser draggable */
-.MuiAppBar-root {
-  -webkit-app-region: drag;
-  -webkit-user-select: none;
-}
-
-/* Los elementos interactivos dentro del AppBar no deben ser draggables */
-.MuiAppBar-root button,
-.MuiAppBar-root .MuiIconButton-root,
-.MuiAppBar-root .MuiTypography-root,
-.MuiAppBar-root input,
-.MuiAppBar-root a {
-  -webkit-app-region: no-drag;
+/* Ajustes para integración con titleBarOverlay de Electron */
+body {
+  padding-top: env(titlebar-area-height, 0px);
 }
