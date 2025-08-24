@@ -10,7 +10,9 @@ interface ElectronTitleBarProps {
   onSettingsClick: () => void;
 }
 
-export const ElectronTitleBar: React.FC<ElectronTitleBarProps> = ({ onSettingsClick }) => {
+export const ElectronTitleBar: React.FC<ElectronTitleBarProps> = ({
+  onSettingsClick,
+}) => {
   const handleClose = () => {
     const currentWindow = electronUtils.getCurrentWindow();
     if (currentWindow && typeof currentWindow.close === 'function') {

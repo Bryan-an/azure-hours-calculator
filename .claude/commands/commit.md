@@ -26,9 +26,10 @@ Crea un commit inteligente analizando los cambios actuales en el proyecto.
    - Incluir contexto específico del proyecto (React, Electron, TypeScript, etc.)
    - Seguir el estilo de los commits anteriores
 4. **No incluir firma estándar**:
+
    ```
    🤖 Generated with [Claude Code](https://claude.ai/code)
-   
+
    Co-Authored-By: Claude <noreply@anthropic.com>
    ```
 

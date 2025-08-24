@@ -25,10 +25,10 @@ export class GoogleCalendarService {
 
   private async ensureValidToken(): Promise<void> {
     if (!this.expiresAt) return;
-    
+
     const now = Date.now();
     const bufferTime = 5 * 60 * 1000; // 5 minutes buffer
-    
+
     if (now + bufferTime >= this.expiresAt) {
       await this.refreshAccessToken();
     }
@@ -36,30 +36,37 @@ export class GoogleCalendarService {
 
   private async refreshAccessToken(): Promise<void> {
     if (!this.refreshToken) {
-      throw new Error('No refresh token available. Re-authentication required.');
+      throw new Error(
+        'No refresh token available. Re-authentication required.'
+      );
     }
 
     try {
       // Note: This would require implementing token refresh endpoint
       // For now, we'll log the attempt and clear tokens for re-auth
-      this.logSecurityEvent('token_refresh_attempted', { 
-        reason: 'token_expired'
+      this.logSecurityEvent('token_refresh_attempted', {
+        reason: 'token_expired',
       });
-      
+
       // Clear expired tokens to force re-authentication
       const { StorageUtil } = await import('../utils/storage');
       StorageUtil.clearGoogleAuth();
-      
-      throw new Error('Token expirado. Por favor, vuelve a autenticarte en Configuración.');
+
+      throw new Error(
+        'Token expirado. Por favor, vuelve a autenticarte en Configuración.'
+      );
     } catch (error) {
-      this.logSecurityEvent('token_refresh_failed', { 
-        error: 'failed'
+      this.logSecurityEvent('token_refresh_failed', {
+        error: 'failed',
       });
       throw error;
     }
   }
 
-  private logSecurityEvent(event: string, details: Record<string, any>): void {
+  private logSecurityEvent(
+    event: string,
+    details: Record<string, unknown>
+  ): void {
     const logEntry = {
       timestamp: new Date().toISOString(),
       event,
@@ -68,17 +75,22 @@ export class GoogleCalendarService {
         eventsCount: details.eventsCount,
         filteredEventsCount: details.filteredEventsCount,
         error: details.error ? 'Error occurred' : undefined,
-        status: details.status
-      }
+        status: details.status,
+      },
     };
-    
+
     // Store in localStorage for audit trail (without sensitive data)
-    const existingLogs = JSON.parse(localStorage.getItem('google_calendar_audit_log') || '[]');
+    const existingLogs = JSON.parse(
+      localStorage.getItem('google_calendar_audit_log') || '[]'
+    );
     existingLogs.push(logEntry);
-    
+
     // Keep only last 50 entries
     const recentLogs = existingLogs.slice(-50);
-    localStorage.setItem('google_calendar_audit_log', JSON.stringify(recentLogs));
+    localStorage.setItem(
+      'google_calendar_audit_log',
+      JSON.stringify(recentLogs)
+    );
   }
 
   async getEvents(startDate: Date, endDate: Date): Promise<Meeting[]> {
@@ -89,7 +101,7 @@ export class GoogleCalendarService {
 
     try {
       await this.ensureValidToken();
-      
+
       this.logSecurityEvent('calendar_access_start', {});
       const response = await axios.get(
         `${GOOGLE_CALENDAR_API_BASE_URL}/calendars/${this.calendarId}/events`,
@@ -102,70 +114,81 @@ export class GoogleCalendarService {
             maxResults: 250,
           },
           headers: {
-            'Authorization': `Bearer ${this.accessToken}`,
+            Authorization: `Bearer ${this.accessToken}`,
             'Content-Type': 'application/json',
           },
         }
       );
 
-      const mappedEvents = response.data.items.map((event: any): Meeting => {
-        // Handle all-day events and timed events
-        const startDateTime = event.start.dateTime 
-          ? new Date(event.start.dateTime)
-          : new Date(event.start.date);
-        
-        const endDateTime = event.end.dateTime
-          ? new Date(event.end.dateTime)
-          : new Date(event.end.date);
+      const mappedEvents = response.data.items
+        .map((event: unknown): Meeting => {
+          const eventObj = event as Record<string, any>;
+          // Handle all-day events and timed events
+          const startDateTime = eventObj.start?.dateTime
+            ? new Date(eventObj.start.dateTime)
+            : new Date(eventObj.start?.date);
 
-        // Determine if the event is optional based on attendee response or event status
-        const isOptional = this.determineIfEventIsOptional(event);
+          const endDateTime = eventObj.end?.dateTime
+            ? new Date(eventObj.end.dateTime)
+            : new Date(eventObj.end?.date);
 
-        return {
-          id: event.id,
-          title: event.summary || 'Sin título',
-          start: startDateTime,
-          end: endDateTime,
-          isOptional: isOptional,
-        };
-      }).filter((event: Meeting) => {
-        // Filter out all-day events if they don't have specific times
-        const isAllDay = event.start.getHours() === 0 && 
-                         event.start.getMinutes() === 0 && 
-                         event.end.getHours() === 0 && 
-                         event.end.getMinutes() === 0;
-        return !isAllDay;
-      });
+          // Determine if the event is optional based on attendee response or event status
+          const isOptional = this.determineIfEventIsOptional(eventObj);
+
+          return {
+            id: eventObj.id,
+            title: eventObj.summary || 'Sin título',
+            start: startDateTime,
+            end: endDateTime,
+            isOptional: isOptional,
+          };
+        })
+        .filter((event: Meeting) => {
+          // Filter out all-day events if they don't have specific times
+          const isAllDay =
+            event.start.getHours() === 0 &&
+            event.start.getMinutes() === 0 &&
+            event.end.getHours() === 0 &&
+            event.end.getMinutes() === 0;
+          return !isAllDay;
+        });
 
       this.logSecurityEvent('calendar_access_success', {
         eventsCount: response.data.items.length,
-        filteredEventsCount: mappedEvents.length
+        filteredEventsCount: mappedEvents.length,
       });
 
       return mappedEvents;
     } catch (error) {
       this.logSecurityEvent('calendar_access_error', {
-        status: axios.isAxiosError(error) ? error.response?.status : undefined
+        status: axios.isAxiosError(error) ? error.response?.status : undefined,
       });
-      
+
       console.error('Error fetching events from Google Calendar:', error);
       if (axios.isAxiosError(error) && error.response?.status === 401) {
         // Clear invalid token
         const { StorageUtil } = await import('../utils/storage');
         StorageUtil.clearGoogleAuth();
-        throw new Error('Token de acceso de Google Calendar expirado o inválido');
+        throw new Error(
+          'Token de acceso de Google Calendar expirado o inválido'
+        );
       }
       return [];
     }
   }
 
-  private determineIfEventIsOptional(event: any): boolean {
+  private determineIfEventIsOptional(event: Record<string, unknown>): boolean {
     // Check if the current user has declined the event
-    const attendees = event.attendees || [];
-    const currentUserAttendee = attendees.find((attendee: any) => attendee.self === true);
-    
+    const attendees = (event.attendees as Array<Record<string, unknown>>) || [];
+    const currentUserAttendee = attendees.find(
+      (attendee) => (attendee as { self?: boolean }).self === true
+    );
+
     if (currentUserAttendee) {
-      return currentUserAttendee.responseStatus === 'declined';
+      return (
+        (currentUserAttendee as { responseStatus?: string }).responseStatus ===
+        'declined'
+      );
     }
 
     // Check event transparency (if marked as 'transparent', it's like optional)
@@ -188,19 +211,22 @@ export class GoogleCalendarService {
     }
 
     try {
-      await axios.get(`${GOOGLE_CALENDAR_API_BASE_URL}/calendars/${this.calendarId}`, {
-        headers: {
-          'Authorization': `Bearer ${this.accessToken}`,
-        },
-      });
+      await axios.get(
+        `${GOOGLE_CALENDAR_API_BASE_URL}/calendars/${this.calendarId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${this.accessToken}`,
+          },
+        }
+      );
       return true;
-    } catch (error) {
+    } catch {
       // Connection test failed
       return false;
     }
   }
 
-  async getCalendarList(): Promise<Array<{id: string, summary: string}>> {
+  async getCalendarList(): Promise<Array<{ id: string; summary: string }>> {
     if (!this.accessToken) {
       return [];
     }
@@ -210,7 +236,7 @@ export class GoogleCalendarService {
         `${GOOGLE_CALENDAR_API_BASE_URL}/users/me/calendarList`,
         {
           headers: {
-            'Authorization': `Bearer ${this.accessToken}`,
+            Authorization: `Bearer ${this.accessToken}`,
           },
         }
       );
@@ -219,7 +245,7 @@ export class GoogleCalendarService {
         id: calendar.id,
         summary: calendar.summary || calendar.id,
       }));
-    } catch (error) {
+    } catch {
       // Error fetching calendar list
       return [];
     }
@@ -241,13 +267,17 @@ export class GoogleAuthHelper {
   }
 
   static isElectron(): boolean {
-    return !!(window as any).require || !!(window as any).electronAPI || navigator.userAgent.includes('Electron');
+    return (
+      !!(window as any).require ||
+      !!(window as any).electronAPI ||
+      navigator.userAgent.includes('Electron')
+    );
   }
 
   static async waitForGoogleAPI(maxWaitMs = 10000): Promise<boolean> {
     const startTime = Date.now();
     const isElectron = this.isElectron();
-    
+
     while (Date.now() - startTime < maxWaitMs) {
       if (window.gapi && window.gapi.load) {
         if (isElectron) {
@@ -258,18 +288,22 @@ export class GoogleAuthHelper {
           }
         }
       }
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 500));
     }
-    
+
     return false;
   }
 
   static async initializeGapi(): Promise<void> {
     const isElectron = this.isElectron();
-    
+
     return new Promise((resolve, reject) => {
       if (!window.gapi) {
-        reject(new Error('Google API library not loaded. Please check internet connection.'));
+        reject(
+          new Error(
+            'Google API library not loaded. Please check internet connection.'
+          )
+        );
         return;
       }
 
@@ -284,7 +318,9 @@ export class GoogleAuthHelper {
           try {
             // Initialize client for API calls
             await window.gapi.client.init({
-              discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest'],
+              discoveryDocs: [
+                'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest',
+              ],
             });
 
             if (isElectron) {
@@ -294,7 +330,9 @@ export class GoogleAuthHelper {
                 throw new Error('Google Identity Services not loaded');
               }
 
-              this.tokenClient = (window as any).google.accounts.oauth2.initTokenClient({
+              this.tokenClient = (
+                window as any
+              ).google.accounts.oauth2.initTokenClient({
                 client_id: this.CLIENT_ID,
                 scope: this.SCOPES,
                 callback: '',
@@ -327,7 +365,9 @@ export class GoogleAuthHelper {
       // Wait for Google APIs to be available
       const isReady = await this.waitForGoogleAPI();
       if (!isReady) {
-        throw new Error('Google API libraries are not available. Please check your internet connection.');
+        throw new Error(
+          'Google API libraries are not available. Please check your internet connection.'
+        );
       }
 
       await this.initializeGapi();
@@ -339,14 +379,14 @@ export class GoogleAuthHelper {
         if (!this.tokenClient) {
           throw new Error('Failed to initialize Google token client');
         }
-        
+
         return new Promise((resolve, reject) => {
           this.tokenClient.callback = (response: any) => {
             if (response.error) {
               reject(new Error(response.error_description || response.error));
               return;
             }
-            
+
             if (response.access_token) {
               resolve(response.access_token);
             } else {
@@ -361,27 +401,45 @@ export class GoogleAuthHelper {
       if (error.message?.includes('popup_closed_by_user')) {
         throw new Error('Autenticación cancelada por el usuario');
       } else if (error.message?.includes('popup_blocked')) {
-        throw new Error('Popup bloqueado por el navegador. Habilita popups para este sitio.');
+        throw new Error(
+          'Popup bloqueado por el navegador. Habilita popups para este sitio.'
+        );
       } else if (error.message?.includes('invalid_client')) {
-        throw new Error('Client ID inválido. Verifica la configuración en Google Cloud Console.');
+        throw new Error(
+          'Client ID inválido. Verifica la configuración en Google Cloud Console.'
+        );
       } else if (error.message?.includes('Client ID not configured')) {
-        throw new Error('Client ID no configurado. Ingresa tu Client ID en la configuración.');
+        throw new Error(
+          'Client ID no configurado. Ingresa tu Client ID en la configuración.'
+        );
       } else if (error.message?.includes('Google API library not loaded')) {
-        throw new Error('Bibliotecas de Google no cargadas. Verifica tu conexión a internet.');
-      } else if (error.message?.includes('Google Identity Services not loaded')) {
-        throw new Error('Google Identity Services no cargado. Verifica tu conexión a internet.');
+        throw new Error(
+          'Bibliotecas de Google no cargadas. Verifica tu conexión a internet.'
+        );
+      } else if (
+        error.message?.includes('Google Identity Services not loaded')
+      ) {
+        throw new Error(
+          'Google Identity Services no cargado. Verifica tu conexión a internet.'
+        );
       }
-      
-      throw new Error(`Error al autenticar con Google Calendar: ${error.message || 'Error desconocido'}`);
+
+      throw new Error(
+        `Error al autenticar con Google Calendar: ${error.message || 'Error desconocido'}`
+      );
     }
   }
 
   static async signOut(): Promise<void> {
     try {
-      if ((window as any).google && (window as any).google.accounts && (window as any).google.accounts.oauth2) {
+      if (
+        (window as any).google &&
+        (window as any).google.accounts &&
+        (window as any).google.accounts.oauth2
+      ) {
         (window as any).google.accounts.oauth2.revoke('', () => {});
       }
-    } catch (error) {
+    } catch {
       // Sign-out error handled silently
     }
   }
@@ -406,8 +464,9 @@ export class GoogleAuthHelper {
       const scope = encodeURIComponent(this.SCOPES);
       const responseType = 'token';
       const state = Math.random().toString(36).substring(2, 15);
-      
-      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+
+      const authUrl =
+        `https://accounts.google.com/o/oauth2/v2/auth?` +
         `client_id=${this.CLIENT_ID}&` +
         `redirect_uri=${encodeURIComponent(redirectUri)}&` +
         `scope=${scope}&` +
@@ -415,7 +474,6 @@ export class GoogleAuthHelper {
         `state=${state}&` +
         `include_granted_scopes=true`;
 
-      
       // Create a popup window for OAuth
       const popup = window.open(
         authUrl,
@@ -424,7 +482,11 @@ export class GoogleAuthHelper {
       );
 
       if (!popup) {
-        reject(new Error('Popup bloqueado por el navegador. Habilita popups para este sitio.'));
+        reject(
+          new Error(
+            'Popup bloqueado por el navegador. Habilita popups para este sitio.'
+          )
+        );
         return;
       }
 
@@ -479,7 +541,7 @@ export class GoogleAuthHelper {
               reject(new Error('No access token found in OAuth response'));
             }
           }
-        } catch (e) {
+        } catch {
           // Cross-origin access denied - this is expected until the redirect
         }
       }, 1000);

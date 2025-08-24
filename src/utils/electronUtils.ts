@@ -2,19 +2,23 @@
 
 export const electronUtils = {
   isElectron: (): boolean => {
-    return !!(window as any).require;
+    return !!(window as unknown as Record<string, unknown>).require;
   },
 
   getCurrentWindow: () => {
     if (!electronUtils.isElectron()) return null;
-    
+
     try {
-      const { remote } = (window as any).require('electron');
+      const require = (window as unknown as Record<string, unknown>)
+        .require as (module: string) => any;
+      const { remote } = require('electron');
       return remote?.getCurrentWindow() || null;
-    } catch (error) {
+    } catch {
       // Fallback para versiones más nuevas de Electron sin remote
       try {
-        const { ipcRenderer } = (window as any).require('electron');
+        const require = (window as unknown as Record<string, unknown>)
+          .require as (module: string) => any;
+        const { ipcRenderer } = require('electron');
         return {
           maximize: () => ipcRenderer.invoke('window-maximize'),
           unmaximize: () => ipcRenderer.invoke('window-unmaximize'),
@@ -81,5 +85,5 @@ export const electronUtils = {
     } catch (error) {
       console.error('Error al cambiar estado de ventana:', error);
     }
-  }
+  },
 };

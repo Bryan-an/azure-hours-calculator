@@ -21,6 +21,7 @@ npm --version
 ```
 
 Si no tienes Node.js instalado:
+
 ```bash
 # Instalar con Homebrew (recomendado)
 brew install node
@@ -63,6 +64,7 @@ npm run build
 ```
 
 Si la construcción es exitosa, verás un mensaje como:
+
 ```
 Compiled successfully.
 File sizes after gzip:
@@ -72,23 +74,28 @@ File sizes after gzip:
 ### 6. Ejecutar la Aplicación
 
 #### Opción A: Modo Desarrollo (Recomendado para pruebas)
+
 ```bash
 # Iniciar en modo desarrollo
 npm start
 ```
+
 Esto abrirá la aplicación en tu navegador web en `http://localhost:3000`
 
 #### Opción B: Aplicación de Escritorio
+
 ```bash
 # Iniciar como aplicación de escritorio
 npm run electron-dev
 ```
 
 #### Opción C: Construir Aplicación Standalone
+
 ```bash
 # Construir aplicación de escritorio
 npm run build-electron
 ```
+
 La aplicación construida estará en la carpeta `dist/`
 
 ## Configuración Inicial
@@ -100,7 +107,7 @@ Al abrir la aplicación por primera vez:
 1. Haz clic en el ícono de engranaje (⚙️) en la esquina superior derecha
 2. Configura tu horario:
    - **Hora de inicio**: Por defecto 8:30 AM
-   - **Hora de fin**: Por defecto 5:30 PM  
+   - **Hora de fin**: Por defecto 5:30 PM
    - **Almuerzo**: Por defecto 1:00 PM - 2:00 PM
    - **Días laborales**: Selecciona Lunes a Viernes
 
@@ -142,6 +149,7 @@ Al abrir la aplicación por primera vez:
 4. **Haz clic en "Calcular Fechas"**
 
 La aplicación te mostrará:
+
 - Fecha estimada de finalización
 - Días laborales utilizados
 - Horas de trabajo efectivas
@@ -151,11 +159,13 @@ La aplicación te mostrará:
 ## Solución de Problemas
 
 ### Error: "npm ERR! peer dep missing"
+
 ```bash
 npm install --legacy-peer-deps
 ```
 
 ### Error: "Module not found"
+
 ```bash
 # Limpiar caché y reinstalar
 npm cache clean --force
@@ -164,15 +174,18 @@ npm install --legacy-peer-deps
 ```
 
 ### La aplicación no se ve en modo oscuro
+
 - En macOS, asegúrate de tener el modo oscuro habilitado en Preferencias del Sistema
 - La aplicación hereda automáticamente el tema del sistema
 
 ### Problemas con Notion
+
 - Verifica que el Database ID sea correcto (formato: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
 - Asegúrate de que la integración tenga acceso a la base de datos
 - La base de datos debe tener columnas llamadas "Date", "Title", y "Optional"
 
 ### Problemas con feriados
+
 - Si no tienes API Key de Calendarific, la aplicación usará feriados predeterminados
 - Los feriados predeterminados incluyen los principales feriados nacionales de Ecuador
 

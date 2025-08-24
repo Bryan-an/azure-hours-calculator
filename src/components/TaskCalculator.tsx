@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Card,
   CardContent,
@@ -39,28 +39,30 @@ interface TaskCalculatorProps {
   workSchedule: WorkSchedule;
 }
 
-export const TaskCalculator: React.FC<TaskCalculatorProps> = ({ workSchedule }) => {
+export const TaskCalculator: React.FC<TaskCalculatorProps> = ({
+  workSchedule,
+}) => {
   const [estimatedHours, setEstimatedHours] = useState<string>('');
   const [startDate, setStartDate] = useState<Date>(new Date());
   const [excludeHolidays, setExcludeHolidays] = useState<boolean>(true);
   const [excludeMeetings, setExcludeMeetings] = useState<boolean>(true);
   const [excludedMeetingIds, setExcludedMeetingIds] = useState<string[]>([]);
-  const [excludedHolidayDates, setExcludedHolidayDates] = useState<string[]>([]);
+  const [excludedHolidayDates, setExcludedHolidayDates] = useState<string[]>(
+    []
+  );
   const [isCalculating, setIsCalculating] = useState<boolean>(false);
   const [result, setResult] = useState<CalculationResult | null>(null);
   const [error, setError] = useState<string>('');
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [meetings, setMeetings] = useState<Meeting[]>([]);
-  const [eventSelectionDialogOpen, setEventSelectionDialogOpen] = useState<boolean>(false);
-  const [holidaySelectionDialogOpen, setHolidaySelectionDialogOpen] = useState<boolean>(false);
+  const [eventSelectionDialogOpen, setEventSelectionDialogOpen] =
+    useState<boolean>(false);
+  const [holidaySelectionDialogOpen, setHolidaySelectionDialogOpen] =
+    useState<boolean>(false);
 
-  const holidayService = new HolidayService();
+  const holidayService = useMemo(() => new HolidayService(), []);
 
-  useEffect(() => {
-    loadHolidays();
-  }, []);
-
-  const loadHolidays = async () => {
+  const loadHolidays = useCallback(async () => {
     try {
       const currentYear = new Date().getFullYear();
       const holidayList = await holidayService.getEcuadorHolidays(currentYear);
@@ -68,27 +70,31 @@ export const TaskCalculator: React.FC<TaskCalculatorProps> = ({ workSchedule }) 
     } catch (error) {
       console.error('Error loading holidays:', error);
     }
-  };
+  }, [holidayService]);
+
+  useEffect(() => {
+    loadHolidays();
+  }, [loadHolidays]);
 
   const loadEvents = async (startDate: Date, endDate: Date) => {
     // Check and clear expired sessions
     StorageUtil.clearExpiredSession();
     StorageUtil.updateLastActivity();
-    
+
     const calendarSource = StorageUtil.loadCalendarSource();
-    
+
     if (calendarSource === 'none') {
       return [];
     }
-    
+
     if (calendarSource === 'google') {
       return await loadGoogleCalendarEvents(startDate, endDate);
     }
-    
+
     if (calendarSource === 'ical') {
       return await loadICalEvents(startDate, endDate);
     }
-    
+
     return [];
   };
 
@@ -102,18 +108,23 @@ export const TaskCalculator: React.FC<TaskCalculatorProps> = ({ workSchedule }) 
     }
 
     try {
-      const googleService = new GoogleCalendarService({ 
+      const googleService = new GoogleCalendarService({
         accessToken: googleAccessToken,
         calendarId: googleCalendarId || 'primary',
-        expiresAt: tokenExpiresAt || undefined
+        expiresAt: tokenExpiresAt || undefined,
       });
       return await googleService.getEvents(startDate, endDate);
     } catch (error) {
       console.error('Error loading Google Calendar events:', error);
-      if (error instanceof Error && (error.message.includes('Token') || error.message.includes('expirado'))) {
+      if (
+        error instanceof Error &&
+        (error.message.includes('Token') || error.message.includes('expirado'))
+      ) {
         // Access token might be expired
         StorageUtil.clearGoogleAuth();
-        setError('Sesión de Google Calendar expirada. Por favor, vuelve a autenticarte en Configuración.');
+        setError(
+          'Sesión de Google Calendar expirada. Por favor, vuelve a autenticarte en Configuración.'
+        );
       }
       return [];
     }
@@ -131,7 +142,9 @@ export const TaskCalculator: React.FC<TaskCalculatorProps> = ({ workSchedule }) 
       return await icalService.getEvents(startDate, endDate);
     } catch (error) {
       console.error('Error loading iCal events:', error);
-      setError('Error al cargar eventos del calendario iCal. Verifica la URL en Configuración.');
+      setError(
+        'Error al cargar eventos del calendario iCal. Verifica la URL en Configuración.'
+      );
       return [];
     }
   };
@@ -148,7 +161,7 @@ export const TaskCalculator: React.FC<TaskCalculatorProps> = ({ workSchedule }) 
 
     try {
       const hours = parseFloat(estimatedHours);
-      
+
       // Primera estimación para determinar el rango de fechas para cargar reuniones
       const preliminaryResult = DateCalculationsUtil.calculateEndDate(
         startDate,
@@ -172,7 +185,9 @@ export const TaskCalculator: React.FC<TaskCalculatorProps> = ({ workSchedule }) 
       if (excludeMeetings) {
         if (excludedMeetingIds.length > 0) {
           // Exclusión granular: solo excluir los eventos específicamente seleccionados
-          effectiveMeetings = eventList.filter(m => excludedMeetingIds.includes(m.id));
+          effectiveMeetings = eventList.filter((m) =>
+            excludedMeetingIds.includes(m.id)
+          );
         } else {
           // Exclusión completa: excluir todos los eventos
           effectiveMeetings = eventList;
@@ -185,7 +200,9 @@ export const TaskCalculator: React.FC<TaskCalculatorProps> = ({ workSchedule }) 
       if (excludeHolidays) {
         if (excludedHolidayDates.length > 0) {
           // Exclusión granular: solo excluir los feriados específicamente seleccionados
-          effectiveHolidays = holidays.filter(h => excludedHolidayDates.includes(h.date));
+          effectiveHolidays = holidays.filter((h) =>
+            excludedHolidayDates.includes(h.date)
+          );
         } else {
           // Exclusión completa: excluir todos los feriados
           effectiveHolidays = holidays;
@@ -206,7 +223,9 @@ export const TaskCalculator: React.FC<TaskCalculatorProps> = ({ workSchedule }) 
 
       setResult(finalResult);
     } catch (error) {
-      setError('Error al calcular las fechas. Por favor verifica la configuración.');
+      setError(
+        'Error al calcular las fechas. Por favor verifica la configuración.'
+      );
       console.error('Calculation error:', error);
     } finally {
       setIsCalculating(false);
@@ -239,7 +258,10 @@ export const TaskCalculator: React.FC<TaskCalculatorProps> = ({ workSchedule }) 
     }
   };
 
-  const handleEventSelectionChange = (newExcludeMeetings: boolean, newExcludedIds: string[]) => {
+  const handleEventSelectionChange = (
+    newExcludeMeetings: boolean,
+    newExcludedIds: string[]
+  ) => {
     setExcludeMeetings(newExcludeMeetings);
     setExcludedMeetingIds(newExcludedIds);
   };
@@ -252,7 +274,10 @@ export const TaskCalculator: React.FC<TaskCalculatorProps> = ({ workSchedule }) 
     }
   };
 
-  const handleHolidaySelectionChange = (newExcludeHolidays: boolean, newExcludedDates: string[]) => {
+  const handleHolidaySelectionChange = (
+    newExcludeHolidays: boolean,
+    newExcludedDates: string[]
+  ) => {
     setExcludeHolidays(newExcludeHolidays);
     setExcludedHolidayDates(newExcludedDates);
   };
@@ -271,10 +296,10 @@ export const TaskCalculator: React.FC<TaskCalculatorProps> = ({ workSchedule }) 
 
   const getHolidaySelectionLabel = () => {
     if (!excludeHolidays) return 'Incluir feriados ecuatorianos';
-    
+
     const totalHolidays = holidays.length;
     if (totalHolidays === 0) return 'Excluir feriados ecuatorianos';
-    
+
     if (excludedHolidayDates.length === 0) {
       return 'Excluir todos los feriados ecuatorianos';
     } else if (excludedHolidayDates.length === totalHolidays) {
@@ -291,10 +316,11 @@ export const TaskCalculator: React.FC<TaskCalculatorProps> = ({ workSchedule }) 
   const getEventSelectionLabel = () => {
     const calendarLabel = getCalendarSourceLabel();
     if (!excludeMeetings) return `Incluir tiempo de eventos (${calendarLabel})`;
-    
+
     const totalEvents = meetings.length;
-    if (totalEvents === 0) return `Excluir tiempo de eventos (${calendarLabel})`;
-    
+    if (totalEvents === 0)
+      return `Excluir tiempo de eventos (${calendarLabel})`;
+
     if (excludedMeetingIds.length === 0) {
       return `Excluir todos los eventos (${calendarLabel})`;
     } else if (excludedMeetingIds.length === totalEvents) {
@@ -313,7 +339,8 @@ export const TaskCalculator: React.FC<TaskCalculatorProps> = ({ workSchedule }) 
           </Typography>
 
           <Alert severity="info" sx={{ mb: 3 }}>
-            Horas laborales configuradas: {getDailyWorkingHours()} horas por día ({workSchedule.startTime} - {workSchedule.endTime})
+            Horas laborales configuradas: {getDailyWorkingHours()} horas por día
+            ({workSchedule.startTime} - {workSchedule.endTime})
           </Alert>
 
           <Grid container spacing={3}>
@@ -324,10 +351,10 @@ export const TaskCalculator: React.FC<TaskCalculatorProps> = ({ workSchedule }) 
                 type="number"
                 value={estimatedHours}
                 onChange={(e) => setEstimatedHours(e.target.value)}
-                inputProps={{ 
-                  step: 0.25, 
+                inputProps={{
+                  step: 0.25,
                   min: 0.25,
-                  placeholder: "8.5" 
+                  placeholder: '8.5',
                 }}
                 helperText="Ingresa las horas decimales estimadas (ej: 8.5)"
               />
@@ -338,9 +365,9 @@ export const TaskCalculator: React.FC<TaskCalculatorProps> = ({ workSchedule }) 
                 value={startDate}
                 onChange={(newValue) => newValue && setStartDate(newValue)}
                 slotProps={{
-                  textField: { 
-                    fullWidth: true 
-                  }
+                  textField: {
+                    fullWidth: true,
+                  },
                 }}
                 ampm={false}
               />
@@ -348,12 +375,21 @@ export const TaskCalculator: React.FC<TaskCalculatorProps> = ({ workSchedule }) 
           </Grid>
 
           <Box sx={{ mt: 3, mb: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                mb: 2,
+              }}
+            >
               <FormControlLabel
                 control={
                   <Switch
                     checked={excludeHolidays}
-                    onChange={(e) => handleMainExcludeHolidaysChange(e.target.checked)}
+                    onChange={(e) =>
+                      handleMainExcludeHolidaysChange(e.target.checked)
+                    }
                   />
                 }
                 label={getHolidaySelectionLabel()}
@@ -369,12 +405,20 @@ export const TaskCalculator: React.FC<TaskCalculatorProps> = ({ workSchedule }) 
                 Configurar
               </Button>
             </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+            >
               <FormControlLabel
                 control={
                   <Switch
                     checked={excludeMeetings}
-                    onChange={(e) => handleMainExcludeMeetingsChange(e.target.checked)}
+                    onChange={(e) =>
+                      handleMainExcludeMeetingsChange(e.target.checked)
+                    }
                   />
                 }
                 label={getEventSelectionLabel()}
@@ -397,7 +441,13 @@ export const TaskCalculator: React.FC<TaskCalculatorProps> = ({ workSchedule }) 
               variant="contained"
               onClick={handleCalculate}
               disabled={isCalculating || !estimatedHours}
-              startIcon={isCalculating ? <CircularProgress size={20} /> : <AccessTimeIcon />}
+              startIcon={
+                isCalculating ? (
+                  <CircularProgress size={20} />
+                ) : (
+                  <AccessTimeIcon />
+                )
+              }
               sx={{ mr: 2 }}
             >
               {isCalculating ? 'Calculando...' : 'Calcular Fechas'}
@@ -420,14 +470,16 @@ export const TaskCalculator: React.FC<TaskCalculatorProps> = ({ workSchedule }) 
                   <CheckCircleIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
                   Resultado del Cálculo
                 </Typography>
-                
+
                 <Grid container spacing={2}>
                   <Grid item xs={12} sm={6}>
                     <Typography variant="body2" color="text.secondary">
                       Fecha de inicio:
                     </Typography>
                     <Typography variant="h6">
-                      {DateCalculationsUtil.formatDateForDisplay(result.startDate)}
+                      {DateCalculationsUtil.formatDateForDisplay(
+                        result.startDate
+                      )}
                     </Typography>
                   </Grid>
                   <Grid item xs={12} sm={6}>
@@ -435,7 +487,9 @@ export const TaskCalculator: React.FC<TaskCalculatorProps> = ({ workSchedule }) 
                       Fecha estimada de finalización:
                     </Typography>
                     <Typography variant="h6">
-                      {DateCalculationsUtil.formatDateForDisplay(result.endDate)}
+                      {DateCalculationsUtil.formatDateForDisplay(
+                        result.endDate
+                      )}
                     </Typography>
                   </Grid>
                   <Grid item xs={12} sm={6}>
@@ -460,7 +514,9 @@ export const TaskCalculator: React.FC<TaskCalculatorProps> = ({ workSchedule }) 
                   <Box sx={{ mt: 3 }}>
                     <Divider sx={{ mb: 2 }} />
                     <Typography variant="subtitle1" gutterBottom>
-                      <HolidayVillageIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+                      <HolidayVillageIcon
+                        sx={{ mr: 1, verticalAlign: 'middle' }}
+                      />
                       Feriados Excluidos ({result.holidaysExcluded.length})
                     </Typography>
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
@@ -485,17 +541,19 @@ export const TaskCalculator: React.FC<TaskCalculatorProps> = ({ workSchedule }) 
                       Eventos Excluidos ({result.meetingsExcluded.length})
                     </Typography>
                     <List dense>
-                      {result.meetingsExcluded.slice(0, 5).map((meeting, index) => (
-                        <ListItem key={index}>
-                          <ListItemIcon>
-                            <EventIcon fontSize="small" />
-                          </ListItemIcon>
-                          <ListItemText
-                            primary={meeting.title}
-                            secondary={`${DateCalculationsUtil.formatDateForDisplay(meeting.start)} - ${DateCalculationsUtil.formatDateForDisplay(meeting.end)}`}
-                          />
-                        </ListItem>
-                      ))}
+                      {result.meetingsExcluded
+                        .slice(0, 5)
+                        .map((meeting, index) => (
+                          <ListItem key={index}>
+                            <ListItemIcon>
+                              <EventIcon fontSize="small" />
+                            </ListItemIcon>
+                            <ListItemText
+                              primary={meeting.title}
+                              secondary={`${DateCalculationsUtil.formatDateForDisplay(meeting.start)} - ${DateCalculationsUtil.formatDateForDisplay(meeting.end)}`}
+                            />
+                          </ListItem>
+                        ))}
                       {result.meetingsExcluded.length > 5 && (
                         <ListItem>
                           <ListItemText

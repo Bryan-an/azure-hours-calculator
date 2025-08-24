@@ -38,7 +38,8 @@ const darkTheme = createTheme({
     MuiCard: {
       styleOverrides: {
         root: {
-          backgroundImage: 'linear-gradient(rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.05))',
+          backgroundImage:
+            'linear-gradient(rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.05))',
         },
       },
     },
@@ -46,12 +47,13 @@ const darkTheme = createTheme({
 });
 
 function App() {
-  const [workSchedule, setWorkSchedule] = useState<WorkSchedule>(StorageUtil.getDefaultWorkSchedule());
+  const [workSchedule, setWorkSchedule] = useState<WorkSchedule>(
+    StorageUtil.getDefaultWorkSchedule()
+  );
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   // Detectar si estamos en Electron
   const isElectron = !!(window as any).require;
-  const isMacOS = navigator.platform.includes('Mac');
 
   useEffect(() => {
     // Cargar configuración guardada al inicio
@@ -75,7 +77,9 @@ function App() {
       <CssBaseline />
       <div className="App">
         {/* Barra de título para Electron */}
-        {isElectron && <ElectronTitleBar onSettingsClick={() => setSettingsOpen(true)} />}
+        {isElectron && (
+          <ElectronTitleBar onSettingsClick={() => setSettingsOpen(true)} />
+        )}
 
         {/* AppBar solo para web */}
         {!isElectron && (
@@ -102,9 +106,15 @@ function App() {
             <Typography variant="h4" component="h1" gutterBottom align="center">
               Calculadora de Fechas para Azure DevOps
             </Typography>
-            <Typography variant="subtitle1" color="text.secondary" align="center" sx={{ mb: 4 }}>
-              Calcula automáticamente las fechas de inicio y fin de tus tareas considerando tu horario laboral,
-              feriados ecuatorianos y reuniones programadas.
+            <Typography
+              variant="subtitle1"
+              color="text.secondary"
+              align="center"
+              sx={{ mb: 4 }}
+            >
+              Calcula automáticamente las fechas de inicio y fin de tus tareas
+              considerando tu horario laboral, feriados ecuatorianos y reuniones
+              programadas.
             </Typography>
           </Box>
 

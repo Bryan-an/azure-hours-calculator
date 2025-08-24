@@ -29,19 +29,24 @@ export class ICalService {
 
     try {
       this.logSecurityEvent('ical_access_start', {
-        dateRange: { start: startDate.toISOString(), end: endDate.toISOString() },
-        url: this.sanitizeUrl(this.url)
+        dateRange: {
+          start: startDate.toISOString(),
+          end: endDate.toISOString(),
+        },
+        url: this.sanitizeUrl(this.url),
       });
 
       // Use CORS proxy for Google Calendar URLs to avoid CORS issues
-      const proxyUrl = this.needsCorsProxy(this.url) 
+      const proxyUrl = this.needsCorsProxy(this.url)
         ? `https://api.allorigins.win/get?url=${encodeURIComponent(this.url)}`
         : this.url;
 
       const response = await fetch(proxyUrl, {
         method: 'GET',
         headers: {
-          'Accept': this.needsCorsProxy(this.url) ? 'application/json' : 'text/calendar',
+          Accept: this.needsCorsProxy(this.url)
+            ? 'application/json'
+            : 'text/calendar',
         },
       });
 
@@ -57,17 +62,19 @@ export class ICalService {
         icalData = await response.text();
       }
       const events = this.parseICalData(icalData);
-      
+
       // Filter events by date range
-      const filteredEvents = events.filter(event => {
+      const filteredEvents = events.filter((event) => {
         return event.dtstart >= startDate && event.dtstart <= endDate;
       });
 
-      const mappedEvents = filteredEvents.map(event => this.mapICalEventToMeeting(event));
+      const mappedEvents = filteredEvents.map((event) =>
+        this.mapICalEventToMeeting(event)
+      );
 
       this.logSecurityEvent('ical_access_success', {
         eventsCount: events.length,
-        filteredEventsCount: mappedEvents.length
+        filteredEventsCount: mappedEvents.length,
       });
 
       return mappedEvents;
@@ -76,11 +83,14 @@ export class ICalService {
         error: error instanceof Error ? error.message : 'unknown',
         url: this.sanitizeUrl(this.url),
         usedProxy: this.needsCorsProxy(this.url),
-        isElectron: !!(window as any).require || !!(window as any).electronAPI || navigator.userAgent.includes('Electron')
+        isElectron:
+          !!(window as any).require ||
+          !!(window as any).electronAPI ||
+          navigator.userAgent.includes('Electron'),
       });
-      
+
       // Error fetching iCal data - details logged securely
-      
+
       throw error; // Re-throw to show user the specific error
     }
   }
@@ -93,8 +103,8 @@ export class ICalService {
     let currentValue = '';
 
     for (let i = 0; i < lines.length; i++) {
-      let line = lines[i];
-      
+      const line = lines[i];
+
       // Handle line folding (lines that start with space or tab)
       if (line.match(/^[ \t]/) && currentProperty) {
         currentValue += line.substring(1);
@@ -127,10 +137,14 @@ export class ICalService {
     return events;
   }
 
-  private setEventProperty(event: Partial<ICalEvent>, property: string, value: string): void {
+  private setEventProperty(
+    event: Partial<ICalEvent>,
+    property: string,
+    value: string
+  ): void {
     // Remove parameters from property name (e.g., "DTSTART;TZID=..." becomes "DTSTART")
     const propName = property.split(';')[0];
-    
+
     switch (propName) {
       case 'UID':
         event.uid = value;
@@ -159,7 +173,7 @@ export class ICalService {
   private parseICalDate(dateString: string): Date {
     // Remove timezone info for simple parsing
     const cleanDate = dateString.replace(/;.*$/, '');
-    
+
     if (cleanDate.length === 8) {
       // Date only format: YYYYMMDD
       const year = parseInt(cleanDate.substr(0, 4));
@@ -185,7 +199,7 @@ export class ICalService {
       const second = parseInt(cleanDate.substr(13, 2));
       return new Date(year, month, day, hour, minute, second);
     }
-    
+
     // Fallback to ISO parsing
     try {
       return new Date(cleanDate);
@@ -200,7 +214,7 @@ export class ICalService {
 
   private mapICalEventToMeeting(event: ICalEvent): Meeting {
     const isOptional = this.determineIfEventIsOptional(event);
-    
+
     return {
       id: event.uid,
       title: event.summary || 'Sin título',
@@ -216,16 +230,21 @@ export class ICalService {
     if (event.status === 'CANCELLED') {
       return true;
     }
-    
+
     // 2. Transparency is TRANSPARENT (means it doesn't block time)
     if (event.transparency === 'TRANSPARENT') {
       return true;
     }
 
     // 3. Title contains optional keywords (customize as needed)
-    const optionalKeywords = ['opcional', 'optional', '[opcional]', '(opcional)'];
+    const optionalKeywords = [
+      'opcional',
+      'optional',
+      '[opcional]',
+      '(opcional)',
+    ];
     const title = (event.summary || '').toLowerCase();
-    if (optionalKeywords.some(keyword => title.includes(keyword))) {
+    if (optionalKeywords.some((keyword) => title.includes(keyword))) {
       return true;
     }
 
@@ -234,21 +253,26 @@ export class ICalService {
 
   private needsCorsProxy(url: string): boolean {
     // In Electron, we don't need CORS proxy since there are no CORS restrictions
-    const isElectron = !!(window as any).require || !!(window as any).electronAPI || navigator.userAgent.includes('Electron');
+    const isElectron =
+      !!(window as any).require ||
+      !!(window as any).electronAPI ||
+      navigator.userAgent.includes('Electron');
     if (isElectron) {
       return false;
     }
-    
+
     // Check if URL is from domains that typically have CORS restrictions in browsers
     const corsRestrictedDomains = [
       'calendar.google.com',
       'outlook.live.com',
-      'outlook.office365.com'
+      'outlook.office365.com',
     ];
-    
+
     try {
       const urlObj = new URL(url);
-      return corsRestrictedDomains.some(domain => urlObj.host.includes(domain));
+      return corsRestrictedDomains.some((domain) =>
+        urlObj.host.includes(domain)
+      );
     } catch {
       return false;
     }
@@ -272,17 +296,19 @@ export class ICalService {
         ...details,
         userAgent: navigator.userAgent,
         service: 'iCal',
-      }
+      },
     };
-    
+
     // Store in localStorage for audit trail
-    const existingLogs = JSON.parse(localStorage.getItem('calendar_audit_log') || '[]');
+    const existingLogs = JSON.parse(
+      localStorage.getItem('calendar_audit_log') || '[]'
+    );
     existingLogs.push(logEntry);
-    
+
     // Keep only last 100 entries
     const recentLogs = existingLogs.slice(-100);
     localStorage.setItem('calendar_audit_log', JSON.stringify(recentLogs));
-    
+
     // Also log to console for development
     // Security event logged to localStorage only
   }
@@ -294,45 +320,49 @@ export class ICalService {
 
     try {
       // Use CORS proxy for Google Calendar URLs
-      const proxyUrl = this.needsCorsProxy(this.url) 
+      const proxyUrl = this.needsCorsProxy(this.url)
         ? `https://api.allorigins.win/get?url=${encodeURIComponent(this.url)}`
         : this.url;
 
       const response = await fetch(proxyUrl, {
         method: this.needsCorsProxy(this.url) ? 'GET' : 'HEAD', // Proxy doesn't support HEAD
         headers: {
-          'Accept': this.needsCorsProxy(this.url) ? 'application/json' : 'text/calendar',
+          Accept: this.needsCorsProxy(this.url)
+            ? 'application/json'
+            : 'text/calendar',
         },
       });
-      
+
       let success = response.ok;
-      
+
       // For proxy requests, also check if the proxied content is valid
       if (success && this.needsCorsProxy(this.url)) {
         try {
           const jsonResponse = await response.json();
-          success = !!jsonResponse.contents && jsonResponse.contents.includes('BEGIN:VCALENDAR');
+          success =
+            !!jsonResponse.contents &&
+            jsonResponse.contents.includes('BEGIN:VCALENDAR');
         } catch {
           success = false;
         }
       }
-      
+
       this.logSecurityEvent('ical_connection_test', {
         success,
         status: response.status,
         usedProxy: this.needsCorsProxy(this.url),
-        url: this.sanitizeUrl(this.url)
+        url: this.sanitizeUrl(this.url),
       });
-      
+
       return success;
     } catch (error) {
       this.logSecurityEvent('ical_connection_test', {
         success: false,
         error: error instanceof Error ? error.message : 'unknown',
         usedProxy: this.needsCorsProxy(this.url),
-        url: this.sanitizeUrl(this.url)
+        url: this.sanitizeUrl(this.url),
       });
-      
+
       // Connection test failed
       return false;
     }

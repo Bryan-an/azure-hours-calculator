@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
   <head>
     <meta charset="utf-8" />
@@ -15,7 +15,13 @@
     <script src="https://apis.google.com/js/api.js"></script>
     <script>
       // Only load GIS in browser, not in Electron
-      if (!(window.require || window.electronAPI || navigator.userAgent.includes('Electron'))) {
+      if (
+        !(
+          window.require ||
+          window.electronAPI ||
+          navigator.userAgent.includes('Electron')
+        )
+      ) {
         const script = document.createElement('script');
         script.src = 'https://accounts.google.com/gsi/client';
         script.async = true;

@@ -72,7 +72,10 @@ export class StorageUtil {
   }
 
   static saveGoogleTokenExpiresAt(expiresAt: number): void {
-    localStorage.setItem(STORAGE_KEYS.GOOGLE_TOKEN_EXPIRES_AT, expiresAt.toString());
+    localStorage.setItem(
+      STORAGE_KEYS.GOOGLE_TOKEN_EXPIRES_AT,
+      expiresAt.toString()
+    );
   }
 
   static loadGoogleTokenExpiresAt(): number | null {
@@ -96,7 +99,10 @@ export class StorageUtil {
   }
 
   static saveSecuritySettings(settings: SecuritySettings): void {
-    localStorage.setItem(STORAGE_KEYS.SECURITY_SETTINGS, JSON.stringify(settings));
+    localStorage.setItem(
+      STORAGE_KEYS.SECURITY_SETTINGS,
+      JSON.stringify(settings)
+    );
   }
 
   static loadSecuritySettings(): SecuritySettings {
@@ -120,10 +126,10 @@ export class StorageUtil {
   static isSessionExpired(): boolean {
     const settings = this.loadSecuritySettings();
     if (!settings.autoLogoutEnabled) return false;
-    
+
     const now = Date.now();
     const timeoutMs = settings.sessionTimeoutMinutes * 60 * 1000;
-    return (now - settings.lastActivityTimestamp) > timeoutMs;
+    return now - settings.lastActivityTimestamp > timeoutMs;
   }
 
   static clearExpiredSession(): void {
@@ -134,12 +140,17 @@ export class StorageUtil {
       const securityLog = {
         event: 'session_expired',
         timestamp: new Date().toISOString(),
-        details: { reason: 'timeout' }
+        details: { reason: 'timeout' },
       };
-      
-      const existingLogs = JSON.parse(localStorage.getItem('security_events_log') || '[]');
+
+      const existingLogs = JSON.parse(
+        localStorage.getItem('security_events_log') || '[]'
+      );
       existingLogs.push(securityLog);
-      localStorage.setItem('security_events_log', JSON.stringify(existingLogs.slice(-50)));
+      localStorage.setItem(
+        'security_events_log',
+        JSON.stringify(existingLogs.slice(-50))
+      );
     }
   }
 
@@ -158,7 +169,9 @@ export class StorageUtil {
   }
 
   static loadCalendarSource(): CalendarSource {
-    const stored = localStorage.getItem(STORAGE_KEYS.CALENDAR_SOURCE) as CalendarSource;
+    const stored = localStorage.getItem(
+      STORAGE_KEYS.CALENDAR_SOURCE
+    ) as CalendarSource;
     return stored || 'none';
   }
 
@@ -171,7 +184,7 @@ export class StorageUtil {
   }
 
   static clearAllData(): void {
-    Object.values(STORAGE_KEYS).forEach(key => {
+    Object.values(STORAGE_KEYS).forEach((key) => {
       localStorage.removeItem(key);
     });
   }

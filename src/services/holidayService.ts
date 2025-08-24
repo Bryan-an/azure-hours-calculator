@@ -26,13 +26,15 @@ export class HolidayService {
         },
       });
 
-      return response.data.response.holidays.map((holiday: any): Holiday => ({
-        date: holiday.date.iso,
-        name: holiday.name,
-        type: holiday.type[0],
-        country: 'EC',
-        global: holiday.global || false,
-      }));
+      return response.data.response.holidays.map(
+        (holiday: any): Holiday => ({
+          date: holiday.date.iso,
+          name: holiday.name,
+          type: holiday.type[0],
+          country: 'EC',
+          global: holiday.global || false,
+        })
+      );
     } catch (error) {
       console.error('Error fetching holidays from API:', error);
       return this.getStaticEcuadorHolidays(year);
@@ -132,6 +134,6 @@ export class HolidayService {
 
   isHoliday(date: Date, holidays: Holiday[]): Holiday | null {
     const dateString = date.toISOString().split('T')[0];
-    return holidays.find(holiday => holiday.date === dateString) || null;
+    return holidays.find((holiday) => holiday.date === dateString) || null;
   }
 }

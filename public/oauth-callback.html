@@ -1,39 +1,44 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<head>
+  <head>
     <title>OAuth Callback</title>
     <script>
-        // Extract access token from URL fragment
-        function handleOAuthCallback() {
-            const hash = window.location.hash.substring(1);
-            const params = new URLSearchParams(hash);
-            
-            const accessToken = params.get('access_token');
-            const error = params.get('error');
-            const errorDescription = params.get('error_description');
+      // Extract access token from URL fragment
+      function handleOAuthCallback() {
+        const hash = window.location.hash.substring(1);
+        const params = new URLSearchParams(hash);
 
-            // Send the result back to the parent window
-            if (window.opener) {
-                window.opener.postMessage({
-                    type: 'oauth-callback',
-                    access_token: accessToken,
-                    error: error,
-                    error_description: errorDescription
-                }, window.location.origin);
-                window.close();
-            } else {
-                // If no opener, show a simple message
-                document.body.innerHTML = accessToken 
-                    ? '<h1>Autenticación exitosa</h1><p>Puedes cerrar esta ventana.</p>'
-                    : '<h1>Error de autenticación</h1><p>' + (errorDescription || error || 'Error desconocido') + '</p>';
-            }
+        const accessToken = params.get('access_token');
+        const error = params.get('error');
+        const errorDescription = params.get('error_description');
+
+        // Send the result back to the parent window
+        if (window.opener) {
+          window.opener.postMessage(
+            {
+              type: 'oauth-callback',
+              access_token: accessToken,
+              error: error,
+              error_description: errorDescription,
+            },
+            window.location.origin
+          );
+          window.close();
+        } else {
+          // If no opener, show a simple message
+          document.body.innerHTML = accessToken
+            ? '<h1>Autenticación exitosa</h1><p>Puedes cerrar esta ventana.</p>'
+            : '<h1>Error de autenticación</h1><p>' +
+              (errorDescription || error || 'Error desconocido') +
+              '</p>';
         }
+      }
 
-        // Run when page loads
-        window.addEventListener('load', handleOAuthCallback);
+      // Run when page loads
+      window.addEventListener('load', handleOAuthCallback);
     </script>
-</head>
-<body>
+  </head>
+  <body>
     <p>Procesando autenticación...</p>
-</body>
+  </body>
 </html>

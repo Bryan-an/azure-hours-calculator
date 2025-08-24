@@ -23,7 +23,7 @@ import {
   Card,
   CardContent,
   Grid,
-  Badge
+  Badge,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -32,7 +32,7 @@ import {
   CheckBox as CheckBoxIcon,
   CheckBoxOutlineBlank as CheckBoxOutlineBlankIcon,
   CalendarMonth as CalendarMonthIcon,
-  Public as PublicIcon
+  Public as PublicIcon,
 } from '@mui/icons-material';
 import { DateCalendar } from '@mui/x-date-pickers/DateCalendar';
 import { PickersDay, PickersDayProps } from '@mui/x-date-pickers/PickersDay';
@@ -46,16 +46,22 @@ interface HolidaySelectionDialogProps {
   holidays: Holiday[];
   excludeHolidays: boolean;
   excludedHolidayDates: string[];
-  onSelectionChange: (excludeHolidays: boolean, excludedHolidayDates: string[]) => void;
+  onSelectionChange: (
+    excludeHolidays: boolean,
+    excludedHolidayDates: string[]
+  ) => void;
 }
 
 // Componente personalizado para mostrar días con feriados
-const HolidayDay = React.forwardRef<HTMLButtonElement, PickersDayProps<Date> & { 
-  holidaysOnDay?: Holiday[];
-  isExcluded?: boolean;
-}>(({ holidaysOnDay = [], isExcluded = false, ...other }, ref) => {
+const HolidayDay = React.forwardRef<
+  HTMLButtonElement,
+  PickersDayProps<Date> & {
+    holidaysOnDay?: Holiday[];
+    isExcluded?: boolean;
+  }
+>(({ holidaysOnDay = [], isExcluded = false, ...other }, ref) => {
   const hasHolidays = holidaysOnDay.length > 0;
-  
+
   if (!hasHolidays) {
     return <PickersDay {...other} ref={ref} />;
   }
@@ -72,7 +78,7 @@ const HolidayDay = React.forwardRef<HTMLButtonElement, PickersDayProps<Date> & {
             borderRadius: '50%',
             backgroundColor: isExcluded ? 'error.main' : 'primary.main',
             border: '1px solid',
-            borderColor: 'background.paper'
+            borderColor: 'background.paper',
           }}
         />
       }
@@ -91,8 +97,8 @@ const HolidayDay = React.forwardRef<HTMLButtonElement, PickersDayProps<Date> & {
             },
             '&.Mui-selected': {
               backgroundColor: isExcluded ? 'error.dark' : 'primary.dark',
-            }
-          })
+            },
+          }),
         }}
       />
     </Badge>
@@ -107,31 +113,38 @@ export const HolidaySelectionDialog: React.FC<HolidaySelectionDialogProps> = ({
   holidays,
   excludeHolidays,
   excludedHolidayDates,
-  onSelectionChange
+  onSelectionChange,
 }) => {
-  const [localExcludeHolidays, setLocalExcludeHolidays] = useState(excludeHolidays);
-  const [localExcludedDates, setLocalExcludedDates] = useState<string[]>(excludedHolidayDates);
+  const [localExcludeHolidays, setLocalExcludeHolidays] =
+    useState(excludeHolidays);
+  const [localExcludedDates, setLocalExcludedDates] =
+    useState<string[]>(excludedHolidayDates);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
 
   useEffect(() => {
     setLocalExcludeHolidays(excludeHolidays);
     // Si excludeHolidays es true pero no hay fechas específicas, significa "excluir todos"
-    if (excludeHolidays && excludedHolidayDates.length === 0 && holidays.length > 0) {
-      setLocalExcludedDates(holidays.map(h => h.date));
+    if (
+      excludeHolidays &&
+      excludedHolidayDates.length === 0 &&
+      holidays.length > 0
+    ) {
+      setLocalExcludedDates(holidays.map((h) => h.date));
     } else {
       setLocalExcludedDates(excludedHolidayDates);
     }
   }, [excludeHolidays, excludedHolidayDates, holidays]);
 
-  const filteredHolidays = holidays.filter(holiday =>
-    holiday.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    holiday.type.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredHolidays = holidays.filter(
+    (holiday) =>
+      holiday.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      holiday.type.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const getHolidaysForDate = (date: Date): Holiday[] => {
     const dateString = format(date, 'yyyy-MM-dd');
-    return holidays.filter(holiday => holiday.date === dateString);
+    return holidays.filter((holiday) => holiday.date === dateString);
   };
 
   const isHolidayExcluded = (holiday: Holiday): boolean => {
@@ -148,14 +161,16 @@ export const HolidaySelectionDialog: React.FC<HolidaySelectionDialogProps> = ({
 
   const handleHolidayToggle = (holidayDate: string) => {
     if (localExcludedDates.includes(holidayDate)) {
-      setLocalExcludedDates(prev => prev.filter(date => date !== holidayDate));
+      setLocalExcludedDates((prev) =>
+        prev.filter((date) => date !== holidayDate)
+      );
     } else {
-      setLocalExcludedDates(prev => [...prev, holidayDate]);
+      setLocalExcludedDates((prev) => [...prev, holidayDate]);
     }
   };
 
   const handleSelectAll = () => {
-    const allVisibleDates = filteredHolidays.map(h => h.date);
+    const allVisibleDates = filteredHolidays.map((h) => h.date);
     setLocalExcludedDates(allVisibleDates);
     setLocalExcludeHolidays(true);
   };
@@ -177,18 +192,20 @@ export const HolidaySelectionDialog: React.FC<HolidaySelectionDialogProps> = ({
     onClose();
   };
 
-  const excludedCount = localExcludeHolidays 
-    ? (localExcludedDates.length > 0 
-       ? localExcludedDates.length 
-       : holidays.length) // Si no hay fechas específicas, excluir todos
+  const excludedCount = localExcludeHolidays
+    ? localExcludedDates.length > 0
+      ? localExcludedDates.length
+      : holidays.length // Si no hay fechas específicas, excluir todos
     : 0;
   const totalCount = holidays.length;
 
-  const selectedDateHolidays = selectedDate ? getHolidaysForDate(selectedDate) : [];
+  const selectedDateHolidays = selectedDate
+    ? getHolidaysForDate(selectedDate)
+    : [];
 
   return (
-    <Dialog 
-      open={open} 
+    <Dialog
+      open={open}
       onClose={handleCancel}
       maxWidth="lg"
       fullWidth
@@ -206,10 +223,10 @@ export const HolidaySelectionDialog: React.FC<HolidaySelectionDialogProps> = ({
       </DialogTitle>
 
       <DialogContent>
-        <Typography 
-          id="holiday-selection-dialog-description" 
-          variant="body2" 
-          color="text.secondary" 
+        <Typography
+          id="holiday-selection-dialog-description"
+          variant="body2"
+          color="text.secondary"
           gutterBottom
           sx={{ mb: 3 }}
         >
@@ -226,7 +243,7 @@ export const HolidaySelectionDialog: React.FC<HolidaySelectionDialogProps> = ({
                 onChange={(e) => handleMasterToggle(e.target.checked)}
                 color="primary"
                 inputProps={{
-                  'aria-describedby': 'master-toggle-description'
+                  'aria-describedby': 'master-toggle-description',
                 }}
               />
             }
@@ -235,15 +252,14 @@ export const HolidaySelectionDialog: React.FC<HolidaySelectionDialogProps> = ({
                 <Typography variant="subtitle1" component="div">
                   Excluir feriados del cálculo
                 </Typography>
-                <Typography 
+                <Typography
                   id="master-toggle-description"
-                  variant="body2" 
+                  variant="body2"
                   color="text.secondary"
                 >
-                  {localExcludeHolidays 
+                  {localExcludeHolidays
                     ? `Excluyendo ${excludedCount} de ${totalCount} feriados`
-                    : 'Todos los feriados se incluyen en el cálculo'
-                  }
+                    : 'Todos los feriados se incluyen en el cálculo'}
                 </Typography>
               </Box>
             }
@@ -254,14 +270,14 @@ export const HolidaySelectionDialog: React.FC<HolidaySelectionDialogProps> = ({
         {localExcludeHolidays && totalCount > 0 && (
           <>
             <Divider sx={{ mb: 3 }} />
-            
+
             <Grid container spacing={3}>
               {/* Columna izquierda: Calendario */}
               <Grid item xs={12} md={6}>
                 <Typography variant="h6" gutterBottom>
                   Calendario de Feriados
                 </Typography>
-                
+
                 <Card sx={{ mb: 2 }}>
                   <CardContent>
                     <DateCalendar
@@ -271,19 +287,20 @@ export const HolidaySelectionDialog: React.FC<HolidaySelectionDialogProps> = ({
                         day: HolidayDay as any,
                       }}
                       slotProps={{
-                        day: (ownerState: any) => ({
-                          holidaysOnDay: getHolidaysForDate(ownerState.day),
-                          isExcluded: getHolidaysForDate(ownerState.day).some(h => 
-                            localExcludedDates.includes(h.date)
-                          ),
-                        }) as any,
+                        day: (ownerState: any) =>
+                          ({
+                            holidaysOnDay: getHolidaysForDate(ownerState.day),
+                            isExcluded: getHolidaysForDate(ownerState.day).some(
+                              (h) => localExcludedDates.includes(h.date)
+                            ),
+                          }) as any,
                       }}
                       sx={{
                         width: '100%',
                         '& .MuiDayCalendar-weekDayLabel': {
                           fontSize: '0.875rem',
                           fontWeight: 600,
-                        }
+                        },
                       }}
                     />
                   </CardContent>
@@ -293,7 +310,11 @@ export const HolidaySelectionDialog: React.FC<HolidaySelectionDialogProps> = ({
                 {selectedDateHolidays.length > 0 && (
                   <Alert severity="info" sx={{ mb: 2 }}>
                     <Typography variant="subtitle2" gutterBottom>
-                      Feriados el {format(selectedDate!, 'dd \'de\' MMMM \'de\' yyyy', { locale: es })}:
+                      Feriados el{' '}
+                      {format(selectedDate!, "dd 'de' MMMM 'de' yyyy", {
+                        locale: es,
+                      })}
+                      :
                     </Typography>
                     {selectedDateHolidays.map((holiday, index) => (
                       <Typography key={index} variant="body2">
@@ -315,10 +336,12 @@ export const HolidaySelectionDialog: React.FC<HolidaySelectionDialogProps> = ({
                           width: 12,
                           height: 12,
                           borderRadius: '50%',
-                          backgroundColor: 'primary.main'
+                          backgroundColor: 'primary.main',
                         }}
                       />
-                      <Typography variant="caption">Feriado incluido</Typography>
+                      <Typography variant="caption">
+                        Feriado incluido
+                      </Typography>
                     </Box>
                     <Box display="flex" alignItems="center" gap={0.5}>
                       <Box
@@ -326,10 +349,12 @@ export const HolidaySelectionDialog: React.FC<HolidaySelectionDialogProps> = ({
                           width: 12,
                           height: 12,
                           borderRadius: '50%',
-                          backgroundColor: 'error.main'
+                          backgroundColor: 'error.main',
                         }}
                       />
-                      <Typography variant="caption">Feriado excluido</Typography>
+                      <Typography variant="caption">
+                        Feriado excluido
+                      </Typography>
                     </Box>
                   </Box>
                 </Box>
@@ -365,10 +390,10 @@ export const HolidaySelectionDialog: React.FC<HolidaySelectionDialogProps> = ({
                             <ClearIcon />
                           </IconButton>
                         </InputAdornment>
-                      )
+                      ),
                     }}
                     inputProps={{
-                      'aria-label': 'Buscar feriados por nombre o tipo'
+                      'aria-label': 'Buscar feriados por nombre o tipo',
                     }}
                     sx={{ mb: 2 }}
                   />
@@ -394,10 +419,10 @@ export const HolidaySelectionDialog: React.FC<HolidaySelectionDialogProps> = ({
                         Incluir todos
                       </Button>
                     </Tooltip>
-                    <Chip 
-                      label={`${excludedCount} excluidos`} 
-                      size="small" 
-                      color={excludedCount > 0 ? "primary" : "default"}
+                    <Chip
+                      label={`${excludedCount} excluidos`}
+                      size="small"
+                      color={excludedCount > 0 ? 'primary' : 'default'}
                     />
                   </Box>
                 </Box>
@@ -406,44 +431,64 @@ export const HolidaySelectionDialog: React.FC<HolidaySelectionDialogProps> = ({
                 {filteredHolidays.length === 0 ? (
                   <Box textAlign="center" py={4}>
                     <Typography color="text.secondary">
-                      {searchTerm ? 'No se encontraron feriados que coincidan con la búsqueda' : 'No hay feriados disponibles'}
+                      {searchTerm
+                        ? 'No se encontraron feriados que coincidan con la búsqueda'
+                        : 'No hay feriados disponibles'}
                     </Typography>
                   </Box>
                 ) : (
                   <List sx={{ maxHeight: 400, overflow: 'auto' }}>
                     {filteredHolidays
-                      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+                      .sort(
+                        (a, b) =>
+                          new Date(a.date).getTime() -
+                          new Date(b.date).getTime()
+                      )
                       .map((holiday) => {
                         const isExcluded = isHolidayExcluded(holiday);
                         const holidayDate = parseISO(holiday.date);
-                        
+
                         return (
                           <ListItem key={holiday.date} disablePadding>
                             <ListItemIcon>
                               <IconButton
-                                onClick={() => handleHolidayToggle(holiday.date)}
+                                onClick={() =>
+                                  handleHolidayToggle(holiday.date)
+                                }
                                 aria-label={`${isExcluded ? 'Incluir' : 'Excluir'} feriado: ${holiday.name}`}
                               >
-                                {isExcluded ? <CheckBoxIcon color="primary" /> : <CheckBoxOutlineBlankIcon />}
+                                {isExcluded ? (
+                                  <CheckBoxIcon color="primary" />
+                                ) : (
+                                  <CheckBoxOutlineBlankIcon />
+                                )}
                               </IconButton>
                             </ListItemIcon>
                             <ListItemText
                               primary={
-                                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                  <Typography 
+                                <span
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                  }}
+                                >
+                                  <Typography
                                     variant="subtitle2"
                                     component="span"
-                                    sx={{ 
-                                      textDecoration: isExcluded ? 'line-through' : 'none',
-                                      opacity: isExcluded ? 0.7 : 1
+                                    sx={{
+                                      textDecoration: isExcluded
+                                        ? 'line-through'
+                                        : 'none',
+                                      opacity: isExcluded ? 0.7 : 1,
                                     }}
                                   >
                                     {holiday.name}
                                   </Typography>
                                   {holiday.global && (
-                                    <Chip 
-                                      label="Nacional" 
-                                      size="small" 
+                                    <Chip
+                                      label="Nacional"
+                                      size="small"
                                       color="primary"
                                       icon={<PublicIcon />}
                                     />
@@ -452,11 +497,23 @@ export const HolidaySelectionDialog: React.FC<HolidaySelectionDialogProps> = ({
                               }
                               secondary={
                                 <span>
-                                  <Typography variant="caption" color="text.secondary" component="span">
-                                    {format(holidayDate, 'EEEE, dd \'de\' MMMM \'de\' yyyy', { locale: es })}
+                                  <Typography
+                                    variant="caption"
+                                    color="text.secondary"
+                                    component="span"
+                                  >
+                                    {format(
+                                      holidayDate,
+                                      "EEEE, dd 'de' MMMM 'de' yyyy",
+                                      { locale: es }
+                                    )}
                                   </Typography>
                                   <br />
-                                  <Typography variant="caption" color="text.secondary" component="span">
+                                  <Typography
+                                    variant="caption"
+                                    color="text.secondary"
+                                    component="span"
+                                  >
                                     Tipo: {holiday.type}
                                   </Typography>
                                 </span>
@@ -479,22 +536,16 @@ export const HolidaySelectionDialog: React.FC<HolidaySelectionDialogProps> = ({
               No hay feriados disponibles
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Los feriados se cargan desde la API de Calendarific.
-              Verifica la configuración de la API si no aparecen feriados.
+              Los feriados se cargan desde la API de Calendarific. Verifica la
+              configuración de la API si no aparecen feriados.
             </Typography>
           </Box>
         )}
       </DialogContent>
 
       <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button onClick={handleCancel}>
-          Cancelar
-        </Button>
-        <Button 
-          onClick={handleSave} 
-          variant="contained"
-          autoFocus
-        >
+        <Button onClick={handleCancel}>Cancelar</Button>
+        <Button onClick={handleSave} variant="contained" autoFocus>
           Aplicar Selección
         </Button>
       </DialogActions>
