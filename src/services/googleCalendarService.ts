@@ -282,10 +282,16 @@ export class GoogleAuthHelper {
     
     while (Date.now() - startTime < maxWaitMs) {
       if (window.gapi && window.gapi.load) {
-        // In Electron, we might not have google.accounts due to CORS, so we'll use a fallback
-        if (isElectron || ((window as any).google && (window as any).google.accounts)) {
-          console.log('Google APIs are ready');
+        if (isElectron) {
+          // In Electron, we only need gapi, not GIS
+          console.log('Google API ready (Electron mode - no GIS)');
           return true;
+        } else {
+          // In Browser, we need both gapi and GIS
+          if ((window as any).google && (window as any).google.accounts) {
+            console.log('Google APIs ready (Browser mode - with GIS)');
+            return true;
+          }
         }
       }
       console.log('Waiting for Google APIs to load...');
@@ -484,15 +490,18 @@ export class GoogleAuthHelper {
   // Electron-specific OAuth flow using popup window
   static async signInElectron(): Promise<string> {
     return new Promise((resolve, reject) => {
+      // Use a simpler redirect that doesn't conflict with GIS
       const redirectUri = 'http://localhost:3000/oauth-callback.html';
       const scope = encodeURIComponent(this.SCOPES);
       const responseType = 'token';
+      const state = Math.random().toString(36).substring(2, 15);
       
-      const authUrl = `https://accounts.google.com/oauth/v2/authorize?` +
+      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
         `client_id=${this.CLIENT_ID}&` +
         `redirect_uri=${encodeURIComponent(redirectUri)}&` +
         `scope=${scope}&` +
         `response_type=${responseType}&` +
+        `state=${state}&` +
         `include_granted_scopes=true`;
 
       console.log('Opening OAuth popup for Electron...');
