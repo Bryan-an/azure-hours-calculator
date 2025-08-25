@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -29,9 +29,8 @@ import {
   CheckBoxOutlineBlank as CheckBoxOutlineBlankIcon,
   Schedule as ScheduleIcon,
 } from '@mui/icons-material';
-import { format, differenceInMinutes } from 'date-fns';
-import { es } from 'date-fns/locale';
 import { Meeting } from '../types';
+import { useEventSelection } from '../hooks/useEventSelection';
 
 interface EventSelectionDialogProps {
   open: boolean;
@@ -55,94 +54,32 @@ export const EventSelectionDialog: React.FC<EventSelectionDialogProps> = ({
   onSelectionChange,
   calendarSource,
 }) => {
-  const [localExcludeMeetings, setLocalExcludeMeetings] =
-    useState(excludeMeetings);
-  const [localExcludedIds, setLocalExcludedIds] =
-    useState<string[]>(excludedMeetingIds);
-  const [searchTerm, setSearchTerm] = useState('');
-
-  useEffect(() => {
-    setLocalExcludeMeetings(excludeMeetings);
-    // Si excludeMeetings es true pero no hay IDs específicos, significa "excluir todos"
-    if (
-      excludeMeetings &&
-      excludedMeetingIds.length === 0 &&
-      meetings.length > 0
-    ) {
-      setLocalExcludedIds(meetings.map((m) => m.id));
-    } else {
-      setLocalExcludedIds(excludedMeetingIds);
-    }
-  }, [excludeMeetings, excludedMeetingIds, meetings]);
-
-  const filteredMeetings = meetings.filter((meeting) =>
-    meeting.title.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const formatEventDuration = (meeting: Meeting): string => {
-    const duration = differenceInMinutes(meeting.end, meeting.start);
-    const hours = Math.floor(duration / 60);
-    const minutes = duration % 60;
-
-    if (hours === 0) return `${minutes}m`;
-    if (minutes === 0) return `${hours}h`;
-    return `${hours}h ${minutes}m`;
-  };
-
-  const formatEventTime = (meeting: Meeting): string => {
-    return `${format(meeting.start, 'HH:mm', { locale: es })} - ${format(meeting.end, 'HH:mm', { locale: es })}`;
-  };
-
-  const formatEventDate = (date: Date): string => {
-    return format(date, 'dd MMM yyyy', { locale: es });
-  };
-
-  const handleMasterToggle = (checked: boolean) => {
-    setLocalExcludeMeetings(checked);
-    if (!checked) {
-      // Si desactivamos la exclusión general, limpiamos las exclusiones específicas
-      setLocalExcludedIds([]);
-    }
-  };
-
-  const handleEventToggle = (meetingId: string) => {
-    if (localExcludedIds.includes(meetingId)) {
-      setLocalExcludedIds((prev) => prev.filter((id) => id !== meetingId));
-    } else {
-      setLocalExcludedIds((prev) => [...prev, meetingId]);
-    }
-  };
-
-  const handleSelectAll = () => {
-    const allVisibleIds = filteredMeetings.map((m) => m.id);
-    setLocalExcludedIds(allVisibleIds);
-    setLocalExcludeMeetings(true);
-  };
-
-  const handleSelectNone = () => {
-    setLocalExcludedIds([]);
-  };
-
-  const handleSave = () => {
-    onSelectionChange(localExcludeMeetings, localExcludedIds);
-    onClose();
-  };
-
-  const handleCancel = () => {
-    // Revertir cambios locales
-    setLocalExcludeMeetings(excludeMeetings);
-    setLocalExcludedIds(excludedMeetingIds);
-    setSearchTerm('');
-    onClose();
-  };
-
-  // Lógica corregida para el conteo
-  const totalCount = meetings.length;
-  const excludedCount = localExcludeMeetings
-    ? localExcludedIds.length > 0
-      ? localExcludedIds.length
-      : totalCount // Si no hay IDs específicos, excluir todos
-    : 0;
+  const {
+    localExcludeMeetings,
+    searchTerm,
+    debouncedSearchTerm,
+    filteredMeetings,
+    totalCount,
+    excludedCount,
+    setSearchTerm,
+    formatEventDuration,
+    formatEventTime,
+    formatEventDate,
+    isEventExcluded,
+    handleMasterToggle,
+    handleEventToggle,
+    handleSelectAll,
+    handleSelectNone,
+    handleSave,
+    handleCancel,
+    handleClearSearch,
+  } = useEventSelection({
+    meetings,
+    excludeMeetings,
+    excludedMeetingIds,
+    onSelectionChange,
+    onClose,
+  });
 
   return (
     <Dialog
@@ -157,6 +94,7 @@ export const EventSelectionDialog: React.FC<EventSelectionDialogProps> = ({
       <DialogTitle id="event-selection-dialog-title">
         <Box display="flex" alignItems="center" gap={1}>
           <EventIcon />
+
           <Typography variant="h6" component="span">
             Selección de Eventos - {calendarSource}
           </Typography>
@@ -191,6 +129,7 @@ export const EventSelectionDialog: React.FC<EventSelectionDialogProps> = ({
               <Typography variant="subtitle1" component="div">
                 Excluir eventos del cálculo
               </Typography>
+
               <Typography
                 id="master-toggle-description"
                 variant="body2"
@@ -228,7 +167,7 @@ export const EventSelectionDialog: React.FC<EventSelectionDialogProps> = ({
                       <InputAdornment position="end">
                         <IconButton
                           size="small"
-                          onClick={() => setSearchTerm('')}
+                          onClick={handleClearSearch}
                           aria-label="Limpiar búsqueda"
                         >
                           <ClearIcon />
@@ -248,21 +187,26 @@ export const EventSelectionDialog: React.FC<EventSelectionDialogProps> = ({
                     size="small"
                     startIcon={<CheckBoxIcon />}
                     onClick={handleSelectAll}
-                    disabled={filteredMeetings.length === 0}
+                    disabled={
+                      totalCount === 0 ||
+                      (localExcludeMeetings && excludedCount === totalCount)
+                    }
                   >
                     Excluir todos
                   </Button>
                 </Tooltip>
+
                 <Tooltip title="Incluir todos los eventos">
                   <Button
                     size="small"
                     startIcon={<CheckBoxOutlineBlankIcon />}
                     onClick={handleSelectNone}
-                    disabled={localExcludedIds.length === 0}
+                    disabled={!localExcludeMeetings}
                   >
                     Incluir todos
                   </Button>
                 </Tooltip>
+
                 <Chip
                   label={`${excludedCount} excluidos`}
                   size="small"
@@ -275,7 +219,7 @@ export const EventSelectionDialog: React.FC<EventSelectionDialogProps> = ({
             {filteredMeetings.length === 0 ? (
               <Box textAlign="center" py={4}>
                 <Typography color="text.secondary">
-                  {searchTerm
+                  {debouncedSearchTerm
                     ? 'No se encontraron eventos que coincidan con la búsqueda'
                     : 'No hay eventos disponibles'}
                 </Typography>
@@ -283,7 +227,7 @@ export const EventSelectionDialog: React.FC<EventSelectionDialogProps> = ({
             ) : (
               <List sx={{ maxHeight: 400, overflow: 'auto' }}>
                 {filteredMeetings.map((meeting) => {
-                  const isExcluded = localExcludedIds.includes(meeting.id);
+                  const isExcluded = isEventExcluded(meeting);
 
                   return (
                     <ListItem key={meeting.id} disablePadding>
@@ -301,6 +245,7 @@ export const EventSelectionDialog: React.FC<EventSelectionDialogProps> = ({
                             }}
                           />
                         </ListItemIcon>
+
                         <ListItemText
                           id={`event-${meeting.id}-label`}
                           primary={
@@ -323,6 +268,7 @@ export const EventSelectionDialog: React.FC<EventSelectionDialogProps> = ({
                               >
                                 {meeting.title}
                               </Typography>
+
                               {meeting.isOptional && (
                                 <Chip
                                   label="Opcional"
@@ -342,6 +288,7 @@ export const EventSelectionDialog: React.FC<EventSelectionDialogProps> = ({
                               }}
                             >
                               <ScheduleIcon fontSize="small" />
+
                               <Typography variant="caption" component="span">
                                 {formatEventDate(meeting.start)} •{' '}
                                 {formatEventTime(meeting)} •{' '}
@@ -362,9 +309,11 @@ export const EventSelectionDialog: React.FC<EventSelectionDialogProps> = ({
         {totalCount === 0 && (
           <Box textAlign="center" py={4}>
             <EventIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 2 }} />
+
             <Typography color="text.secondary" gutterBottom>
               No hay eventos disponibles
             </Typography>
+
             <Typography variant="body2" color="text.secondary">
               Los eventos se cargan automáticamente cuando realizas un cálculo.
               Para configurar la exclusión específica, primero calcula las
@@ -376,6 +325,7 @@ export const EventSelectionDialog: React.FC<EventSelectionDialogProps> = ({
 
       <DialogActions sx={{ px: 3, pb: 2 }}>
         <Button onClick={handleCancel}>Cancelar</Button>
+
         <Button onClick={handleSave} variant="contained" autoFocus>
           Aplicar Selección
         </Button>

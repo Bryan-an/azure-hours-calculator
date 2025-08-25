@@ -108,11 +108,25 @@ export const useHolidaySelection = ({
 
         setLocalExcludedDates(allOtherDates);
       } else if (localExcludedDates.includes(holidayDate)) {
-        setLocalExcludedDates((prev) =>
-          prev.filter((date) => date !== holidayDate)
+        // Modo normal: remover de la lista de excluidos
+        const newExcludedDates = localExcludedDates.filter(
+          (date) => date !== holidayDate
         );
+
+        setLocalExcludedDates(newExcludedDates);
+
+        // Si no queda ningún feriado excluido, desactivar el master toggle
+        if (newExcludedDates.length === 0) {
+          setLocalExcludeHolidays(false);
+        }
       } else {
+        // Modo normal: agregar a la lista de excluidos
         setLocalExcludedDates((prev) => [...prev, holidayDate]);
+
+        // Asegurar que el master toggle esté activado
+        if (!localExcludeHolidays) {
+          setLocalExcludeHolidays(true);
+        }
       }
     },
     [localExcludedDates, localExcludeHolidays, holidays]
