@@ -38,10 +38,12 @@ azure-hours-calculator/
 │   │   └── TaskCalculator.tsx   # Calculadora principal
 │   ├── services/
 │   │   ├── holidayService.ts    # API de feriados ecuatorianos
-│   │   └── googleCalendarService.ts # Integración con Google Calendar
+│   │   ├── googleCalendarService.ts # Integración con Google Calendar
+│   │   └── iCalService.ts       # Integración con calendarios iCal
 │   ├── utils/
 │   │   ├── dateCalculations.ts  # Lógica de cálculo de fechas
 │   │   ├── electronUtils.ts     # Utilidades para Electron
+│   │   ├── googleAuthHelper.ts  # Helper para autenticación Google OAuth
 │   │   └── storage.ts           # Manejo de localStorage
 │   ├── types/
 │   │   └── index.ts             # Definiciones TypeScript

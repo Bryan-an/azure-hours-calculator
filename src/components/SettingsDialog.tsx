@@ -23,10 +23,8 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { es } from 'date-fns/locale';
 import { CalendarSource } from '../types';
-import {
-  GoogleCalendarService,
-  GoogleAuthHelper,
-} from '../services/googleCalendarService';
+import { GoogleCalendarService } from '../services/googleCalendarService';
+import { GoogleAuthHelper } from '../utils/googleAuthHelper';
 import { ICalService } from '../services/iCalService';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useUIStore } from '../stores/uiStore';
