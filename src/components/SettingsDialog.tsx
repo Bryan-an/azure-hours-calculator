@@ -17,11 +17,15 @@ import {
   Checkbox,
   Divider,
   Alert,
+  IconButton,
+  InputAdornment,
 } from '@mui/material';
 import { TimePicker } from '@mui/x-date-pickers/TimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { es } from 'date-fns/locale';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import {
   CalendarSource,
   GoogleConnectionStatus,
@@ -81,6 +85,10 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
 
   const [icalConnectionStatus, setIcalConnectionStatus] =
     useState<ICalConnectionStatus>('idle');
+
+  // Visibility states for sensitive fields
+  const [showGoogleClientId, setShowGoogleClientId] = useState(false);
+  const [showCalendarificApiKey, setShowCalendarificApiKey] = useState(false);
 
   const loadAvailableCalendars = useCallback(async () => {
     if (!googleAuth.accessToken) return;
@@ -422,12 +430,32 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                   <TextField
                     fullWidth
                     label="Google Client ID"
+                    type={showGoogleClientId ? 'text' : 'password'}
                     value={googleAuth.clientId || ''}
                     onChange={(e) =>
                       setGoogleAuth({ clientId: e.target.value })
                     }
                     placeholder="123456789012-abc...xyz.apps.googleusercontent.com"
                     helperText="Client ID de tu aplicación Google OAuth (Google Cloud Console)"
+                    InputProps={{
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton
+                            aria-label="toggle visibility"
+                            onClick={() =>
+                              setShowGoogleClientId(!showGoogleClientId)
+                            }
+                            edge="end"
+                          >
+                            {showGoogleClientId ? (
+                              <VisibilityOffIcon />
+                            ) : (
+                              <VisibilityIcon />
+                            )}
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                    }}
                   />
                 </Grid>
               )}
@@ -569,11 +597,30 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
             <TextField
               fullWidth
               label="API Key de Calendarific"
-              type="password"
+              type={showCalendarificApiKey ? 'text' : 'password'}
               value={calendarificApiKey || ''}
               onChange={(e) => setCalendarificApiKey(e.target.value)}
               placeholder="1234567890abcdef..."
               helperText="Opcional: Para obtener feriados actualizados. Si no se configura, se usarán feriados predeterminados."
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      aria-label="toggle visibility"
+                      onClick={() =>
+                        setShowCalendarificApiKey(!showCalendarificApiKey)
+                      }
+                      edge="end"
+                    >
+                      {showCalendarificApiKey ? (
+                        <VisibilityOffIcon />
+                      ) : (
+                        <VisibilityIcon />
+                      )}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
             />
 
             <Divider sx={{ my: 3 }} />
