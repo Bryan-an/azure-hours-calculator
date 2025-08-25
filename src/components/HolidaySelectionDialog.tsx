@@ -122,11 +122,21 @@ export const HolidaySelectionDialog: React.FC<HolidaySelectionDialogProps> = ({
   };
 
   const handleHolidayToggle = (holidayDate: string) => {
-    if (localExcludedDates.includes(holidayDate)) {
+    // Si localExcludedDates está vacío pero localExcludeHolidays es true,
+    // significa que estamos en modo "excluir todos"
+    if (localExcludedDates.length === 0 && localExcludeHolidays) {
+      // Cambiar a modo específico: excluir todos MENOS el que se está desactivando
+      const allOtherDates = holidays
+        .filter((h) => h.date !== holidayDate)
+        .map((h) => h.date);
+      setLocalExcludedDates(allOtherDates);
+    } else if (localExcludedDates.includes(holidayDate)) {
+      // Modo normal: remover de la lista de excluidos
       setLocalExcludedDates((prev) =>
         prev.filter((date) => date !== holidayDate)
       );
     } else {
+      // Modo normal: agregar a la lista de excluidos
       setLocalExcludedDates((prev) => [...prev, holidayDate]);
     }
   };
@@ -259,7 +269,12 @@ export const HolidaySelectionDialog: React.FC<HolidaySelectionDialogProps> = ({
                           ({
                             holidaysOnDay: getHolidaysForDate(ownerState.day),
                             isExcluded: getHolidaysForDate(ownerState.day).some(
-                              (h) => localExcludedDates.includes(h.date)
+                              (h) => {
+                                if (!localExcludeHolidays) return false;
+                                if (localExcludedDates.length === 0)
+                                  return true;
+                                return localExcludedDates.includes(h.date);
+                              }
                             ),
                           }) as any,
                       }}
