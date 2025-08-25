@@ -23,7 +23,6 @@ import {
   Card,
   CardContent,
   Grid,
-  Badge,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -35,10 +34,10 @@ import {
   Public as PublicIcon,
 } from '@mui/icons-material';
 import { DateCalendar } from '@mui/x-date-pickers/DateCalendar';
-import { PickersDay, PickersDayProps } from '@mui/x-date-pickers/PickersDay';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Holiday } from '../types';
+import { HolidayDay } from './HolidayDay';
 
 interface HolidaySelectionDialogProps {
   open: boolean;
@@ -51,61 +50,6 @@ interface HolidaySelectionDialogProps {
     excludedHolidayDates: string[]
   ) => void;
 }
-
-// Componente personalizado para mostrar días con feriados
-const HolidayDay = React.forwardRef<
-  HTMLButtonElement,
-  PickersDayProps<Date> & {
-    holidaysOnDay?: Holiday[];
-    isExcluded?: boolean;
-  }
->(({ holidaysOnDay = [], isExcluded = false, ...other }, ref) => {
-  const hasHolidays = holidaysOnDay.length > 0;
-
-  if (!hasHolidays) {
-    return <PickersDay {...other} ref={ref} />;
-  }
-
-  return (
-    <Badge
-      key={other.day.toString()}
-      overlap="circular"
-      badgeContent={
-        <Box
-          sx={{
-            width: 8,
-            height: 8,
-            borderRadius: '50%',
-            backgroundColor: isExcluded ? 'error.main' : 'primary.main',
-            border: '1px solid',
-            borderColor: 'background.paper',
-          }}
-        />
-      }
-    >
-      <PickersDay
-        {...other}
-        ref={ref}
-        sx={{
-          ...other.sx,
-          ...(hasHolidays && {
-            backgroundColor: isExcluded ? 'error.light' : 'primary.light',
-            color: isExcluded ? 'error.contrastText' : 'primary.contrastText',
-            fontWeight: 'bold',
-            '&:hover': {
-              backgroundColor: isExcluded ? 'error.main' : 'primary.main',
-            },
-            '&.Mui-selected': {
-              backgroundColor: isExcluded ? 'error.dark' : 'primary.dark',
-            },
-          }),
-        }}
-      />
-    </Badge>
-  );
-});
-
-HolidayDay.displayName = 'HolidayDay';
 
 export const HolidaySelectionDialog: React.FC<HolidaySelectionDialogProps> = ({
   open,
