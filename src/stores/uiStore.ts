@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import toast from 'react-hot-toast';
 
 interface UIState {
   // Dialog states
@@ -12,13 +13,6 @@ interface UIState {
   isLoadingEvents: boolean;
   isSavingSettings: boolean;
 
-  // Notification/error states
-  notification: {
-    open: boolean;
-    message: string;
-    severity: 'success' | 'error' | 'warning' | 'info';
-  } | null;
-
   // Actions
   setSettingsOpen: (open: boolean) => void;
   setHolidaySelectionOpen: (open: boolean) => void;
@@ -28,12 +22,8 @@ interface UIState {
   setLoadingEvents: (loading: boolean) => void;
   setSavingSettings: (saving: boolean) => void;
 
-  showNotification: (
-    message: string,
-    severity: 'success' | 'error' | 'warning' | 'info'
-  ) => void;
-
-  hideNotification: () => void;
+  // Global toast notifications (system-wide)
+  showToast: (message: string, type: 'success' | 'error' | 'warning') => void;
   resetUIState: () => void;
 }
 
@@ -46,7 +36,6 @@ export const useUIStore = create<UIState>((set) => ({
   isLoadingHolidays: false,
   isLoadingEvents: false,
   isSavingSettings: false,
-  notification: null,
 
   // Actions
   setSettingsOpen: (open) => set({ settingsOpen: open }),
@@ -63,16 +52,29 @@ export const useUIStore = create<UIState>((set) => ({
 
   setSavingSettings: (saving) => set({ isSavingSettings: saving }),
 
-  showNotification: (message, severity) =>
-    set({
-      notification: {
-        open: true,
-        message,
-        severity,
-      },
-    }),
-
-  hideNotification: () => set({ notification: null }),
+  // Global toast notifications (system-wide events)
+  showToast: (message, type) => {
+    switch (type) {
+      case 'success':
+        toast.success(message);
+        break;
+      case 'error':
+        toast.error(message);
+        break;
+      case 'warning':
+        toast(message, {
+          icon: '⚠️',
+          style: {
+            background: '#ffb74d', // Lighter orange for better contrast
+            color: '#000000', // Black text on light orange for WCAG compliance
+            border: '1px solid #f57700',
+          },
+        });
+        break;
+      default:
+        toast(message);
+    }
+  },
 
   resetUIState: () =>
     set({
@@ -83,6 +85,5 @@ export const useUIStore = create<UIState>((set) => ({
       isLoadingHolidays: false,
       isLoadingEvents: false,
       isSavingSettings: false,
-      notification: null,
     }),
 }));

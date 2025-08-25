@@ -10,6 +10,7 @@ import {
   Box,
 } from '@mui/material';
 import SettingsIcon from '@mui/icons-material/Settings';
+import { Toaster } from 'react-hot-toast';
 import { TaskCalculator } from './components/TaskCalculator';
 import { SettingsDialog } from './components/SettingsDialog';
 import { ElectronTitleBar } from './components/ElectronTitleBar';
@@ -18,6 +19,8 @@ import { useSettingsStore } from './stores/settingsStore';
 import { useUIStore } from './stores/uiStore';
 import { initializeStores } from './stores';
 import { electronUtils } from './utils/electronUtils';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import ErrorIcon from '@mui/icons-material/Error';
 
 function App() {
   // Zustand stores
@@ -73,6 +76,26 @@ function App() {
   return (
     <ThemeProvider theme={darkTheme}>
       <CssBaseline />
+
+      <Toaster
+        position="bottom-right"
+        reverseOrder={false}
+        gutter={8}
+        toastOptions={{
+          duration: 5000,
+          style: {
+            background: '#1e1e1e',
+            color: '#ffffff',
+            border: '1px solid #333',
+          },
+          success: {
+            icon: <CheckCircleIcon color="success" />,
+          },
+          error: {
+            icon: <ErrorIcon color="error" />,
+          },
+        }}
+      />
 
       <div className="App">
         {/* Barra de título para Electron */}

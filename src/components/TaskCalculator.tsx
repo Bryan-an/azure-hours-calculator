@@ -34,6 +34,7 @@ import { HolidayService } from '../services/holidayService';
 import { GoogleCalendarService } from '../services/googleCalendarService';
 import { ICalService } from '../services/iCalService';
 import { useSettingsStore } from '../stores/settingsStore';
+import { useUIStore } from '../stores/uiStore';
 
 export const TaskCalculator: React.FC = () => {
   // Zustand stores
@@ -42,28 +43,39 @@ export const TaskCalculator: React.FC = () => {
     calendarSource,
     googleAuth,
     icalUrl,
-    calendarificApiKey: _calendarificApiKey,
     clearExpiredSession,
     updateLastActivity,
     clearGoogleAuth,
   } = useSettingsStore();
+
+  // UI Store (centralized UI state)
+  const {
+    isCalculating,
+    holidaySelectionOpen,
+    eventSelectionOpen,
+    setCalculating,
+    setHolidaySelectionOpen,
+    setEventSelectionOpen,
+    showToast,
+  } = useUIStore();
+
   const [estimatedHours, setEstimatedHours] = useState<string>('');
   const [startDate, setStartDate] = useState<Date>(new Date());
   const [excludeHolidays, setExcludeHolidays] = useState<boolean>(true);
   const [excludeMeetings, setExcludeMeetings] = useState<boolean>(true);
   const [excludedMeetingIds, setExcludedMeetingIds] = useState<string[]>([]);
+
   const [excludedHolidayDates, setExcludedHolidayDates] = useState<string[]>(
     []
   );
-  const [isCalculating, setIsCalculating] = useState<boolean>(false);
+
+  // Local component state (form data)
   const [result, setResult] = useState<CalculationResult | null>(null);
-  const [error, setError] = useState<string>('');
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [meetings, setMeetings] = useState<Meeting[]>([]);
-  const [eventSelectionDialogOpen, setEventSelectionDialogOpen] =
-    useState<boolean>(false);
-  const [holidaySelectionDialogOpen, setHolidaySelectionDialogOpen] =
-    useState<boolean>(false);
+
+  // Local error state (component-specific errors)
+  const [calculationError, setCalculationError] = useState<string>('');
 
   const holidayService = useMemo(() => new HolidayService(), []);
 
@@ -118,17 +130,21 @@ export const TaskCalculator: React.FC = () => {
         calendarId: googleCalendarId || 'primary',
         expiresAt: tokenExpiresAt || undefined,
       });
+
       return await googleService.getEvents(startDate, endDate);
     } catch (error) {
       console.error('Error loading Google Calendar events:', error);
+
       if (
         error instanceof Error &&
         (error.message.includes('Token') || error.message.includes('expirado'))
       ) {
-        // Access token might be expired
+        // Access token might be expired - system notification
         clearGoogleAuth();
-        setError(
-          'Sesión de Google Calendar expirada. Por favor, vuelve a autenticarte en Configuración.'
+
+        showToast(
+          'Sesión de Google Calendar expirada. Por favor, vuelve a autenticarte en Configuración.',
+          'warning'
         );
       }
       return [];
@@ -145,21 +161,26 @@ export const TaskCalculator: React.FC = () => {
       return await icalService.getEvents(startDate, endDate);
     } catch (error) {
       console.error('Error loading iCal events:', error);
-      setError(
+
+      setCalculationError(
         'Error al cargar eventos del calendario iCal. Verifica la URL en Configuración.'
       );
+
       return [];
     }
   };
 
   const handleCalculate = async () => {
     if (!estimatedHours || parseFloat(estimatedHours) <= 0) {
-      setError('Por favor ingresa un número válido de horas estimadas.');
+      setCalculationError(
+        'Por favor ingresa un número válido de horas estimadas.'
+      );
+
       return;
     }
 
-    setIsCalculating(true);
-    setError('');
+    setCalculating(true);
+    setCalculationError(''); // Clear local errors
     setResult(null);
 
     try {
@@ -178,6 +199,7 @@ export const TaskCalculator: React.FC = () => {
 
       // Cargar eventos de calendario en el rango de fechas estimado
       let eventList: Meeting[] = [];
+
       if (excludeMeetings) {
         eventList = await loadEvents(startDate, preliminaryResult.endDate);
         setMeetings(eventList);
@@ -185,6 +207,7 @@ export const TaskCalculator: React.FC = () => {
 
       // Filtrar meetings basado en la selección granular
       let effectiveMeetings: Meeting[] = [];
+
       if (excludeMeetings) {
         if (excludedMeetingIds.length > 0) {
           // Exclusión granular: solo excluir los eventos específicamente seleccionados
@@ -200,6 +223,7 @@ export const TaskCalculator: React.FC = () => {
 
       // Filtrar holidays basado en la selección granular
       let effectiveHolidays: Holiday[] = [];
+
       if (excludeHolidays) {
         if (excludedHolidayDates.length > 0) {
           // Exclusión granular: solo excluir los feriados específicamente seleccionados
@@ -226,12 +250,13 @@ export const TaskCalculator: React.FC = () => {
 
       setResult(finalResult);
     } catch (error) {
-      setError(
+      setCalculationError(
         'Error al calcular las fechas. Por favor verifica la configuración.'
       );
+
       console.error('Calculation error:', error);
     } finally {
-      setIsCalculating(false);
+      setCalculating(false);
     }
   };
 
@@ -239,7 +264,7 @@ export const TaskCalculator: React.FC = () => {
     setEstimatedHours('');
     setStartDate(new Date());
     setResult(null);
-    setError('');
+    setCalculationError(''); // Clear local errors
     setMeetings([]);
   };
 
@@ -270,6 +295,7 @@ export const TaskCalculator: React.FC = () => {
 
   const handleMainExcludeMeetingsChange = (checked: boolean) => {
     setExcludeMeetings(checked);
+
     if (!checked) {
       // Limpiar selección granular cuando se desactiva la exclusión
       setExcludedMeetingIds([]);
@@ -286,6 +312,7 @@ export const TaskCalculator: React.FC = () => {
 
   const handleMainExcludeHolidaysChange = (checked: boolean) => {
     setExcludeHolidays(checked);
+
     if (!checked) {
       // Limpiar selección granular cuando se desactiva la exclusión
       setExcludedHolidayDates([]);
@@ -293,7 +320,7 @@ export const TaskCalculator: React.FC = () => {
   };
 
   const handleOpenHolidaySelection = () => {
-    setHolidaySelectionDialogOpen(true);
+    setHolidaySelectionOpen(true);
   };
 
   const getHolidaySelectionLabel = () => {
@@ -312,7 +339,7 @@ export const TaskCalculator: React.FC = () => {
   };
 
   const handleOpenEventSelection = () => {
-    setEventSelectionDialogOpen(true);
+    setEventSelectionOpen(true);
   };
 
   const getEventSelectionLabel = () => {
@@ -320,6 +347,7 @@ export const TaskCalculator: React.FC = () => {
     if (!excludeMeetings) return `Incluir tiempo de eventos (${calendarLabel})`;
 
     const totalEvents = meetings.length;
+
     if (totalEvents === 0)
       return `Excluir tiempo de eventos (${calendarLabel})`;
 
@@ -361,6 +389,7 @@ export const TaskCalculator: React.FC = () => {
                 helperText="Ingresa las horas decimales estimadas (ej: 8.5)"
               />
             </Grid>
+
             <Grid item xs={12} sm={6}>
               <DateTimePicker
                 label="Fecha y hora de inicio"
@@ -397,6 +426,7 @@ export const TaskCalculator: React.FC = () => {
                 label={getHolidaySelectionLabel()}
                 sx={{ flexGrow: 1 }}
               />
+
               <Button
                 variant="outlined"
                 size="small"
@@ -407,6 +437,7 @@ export const TaskCalculator: React.FC = () => {
                 Configurar
               </Button>
             </Box>
+
             <Box
               sx={{
                 display: 'flex',
@@ -426,6 +457,7 @@ export const TaskCalculator: React.FC = () => {
                 label={getEventSelectionLabel()}
                 sx={{ flexGrow: 1 }}
               />
+
               <Button
                 variant="outlined"
                 size="small"
@@ -433,7 +465,7 @@ export const TaskCalculator: React.FC = () => {
                 disabled={!excludeMeetings}
                 sx={{ ml: 2, minWidth: 'auto', textTransform: 'none' }}
               >
-                {meetings.length === 0 ? 'Configurar' : 'Configurar'}
+                Configurar
               </Button>
             </Box>
           </Box>
@@ -454,14 +486,20 @@ export const TaskCalculator: React.FC = () => {
             >
               {isCalculating ? 'Calculando...' : 'Calcular Fechas'}
             </Button>
+
             <Button variant="outlined" onClick={handleReset}>
               Limpiar
             </Button>
           </Box>
 
-          {error && (
-            <Alert severity="error" sx={{ mt: 2 }}>
-              {error}
+          {/* Local error display - component-specific errors */}
+          {calculationError && (
+            <Alert
+              severity="error"
+              sx={{ mt: 2 }}
+              onClose={() => setCalculationError('')}
+            >
+              {calculationError}
             </Alert>
           )}
 
@@ -478,34 +516,41 @@ export const TaskCalculator: React.FC = () => {
                     <Typography variant="body2" color="text.secondary">
                       Fecha de inicio:
                     </Typography>
+
                     <Typography variant="h6">
                       {DateCalculationsUtil.formatDateForDisplay(
                         result.startDate
                       )}
                     </Typography>
                   </Grid>
+
                   <Grid item xs={12} sm={6}>
                     <Typography variant="body2" color="text.secondary">
                       Fecha estimada de finalización:
                     </Typography>
+
                     <Typography variant="h6">
                       {DateCalculationsUtil.formatDateForDisplay(
                         result.endDate
                       )}
                     </Typography>
                   </Grid>
+
                   <Grid item xs={12} sm={6}>
                     <Typography variant="body2" color="text.secondary">
                       Días laborales utilizados:
                     </Typography>
+
                     <Typography variant="h6">
                       {result.workingDays} días
                     </Typography>
                   </Grid>
+
                   <Grid item xs={12} sm={6}>
                     <Typography variant="body2" color="text.secondary">
                       Horas de trabajo efectivas:
                     </Typography>
+
                     <Typography variant="h6">
                       {result.actualWorkingHours.toFixed(2)} horas
                     </Typography>
@@ -515,12 +560,14 @@ export const TaskCalculator: React.FC = () => {
                 {result.holidaysExcluded.length > 0 && (
                   <Box sx={{ mt: 3 }}>
                     <Divider sx={{ mb: 2 }} />
+
                     <Typography variant="subtitle1" gutterBottom>
                       <HolidayVillageIcon
                         sx={{ mr: 1, verticalAlign: 'middle' }}
                       />
                       Feriados Excluidos ({result.holidaysExcluded.length})
                     </Typography>
+
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                       {result.holidaysExcluded.map((holiday, index) => (
                         <Chip
@@ -538,10 +585,12 @@ export const TaskCalculator: React.FC = () => {
                 {result.meetingsExcluded.length > 0 && (
                   <Box sx={{ mt: 3 }}>
                     <Divider sx={{ mb: 2 }} />
+
                     <Typography variant="subtitle1" gutterBottom>
                       <EventIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
                       Eventos Excluidos ({result.meetingsExcluded.length})
                     </Typography>
+
                     <List dense>
                       {result.meetingsExcluded
                         .slice(0, 5)
@@ -556,6 +605,7 @@ export const TaskCalculator: React.FC = () => {
                             />
                           </ListItem>
                         ))}
+
                       {result.meetingsExcluded.length > 5 && (
                         <ListItem>
                           <ListItemText
@@ -574,8 +624,8 @@ export const TaskCalculator: React.FC = () => {
 
       {/* Diálogo de selección granular de eventos */}
       <EventSelectionDialog
-        open={eventSelectionDialogOpen}
-        onClose={() => setEventSelectionDialogOpen(false)}
+        open={eventSelectionOpen}
+        onClose={() => setEventSelectionOpen(false)}
         meetings={meetings}
         excludeMeetings={excludeMeetings}
         excludedMeetingIds={excludedMeetingIds}
@@ -585,8 +635,8 @@ export const TaskCalculator: React.FC = () => {
 
       {/* Diálogo de selección granular de feriados */}
       <HolidaySelectionDialog
-        open={holidaySelectionDialogOpen}
-        onClose={() => setHolidaySelectionDialogOpen(false)}
+        open={holidaySelectionOpen}
+        onClose={() => setHolidaySelectionOpen(false)}
         holidays={holidays}
         excludeHolidays={excludeHolidays}
         excludedHolidayDates={excludedHolidayDates}
