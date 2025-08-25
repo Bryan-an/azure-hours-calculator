@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import toast from 'react-hot-toast';
+import React from 'react';
+import WarningIcon from '@mui/icons-material/Warning';
 
 interface UIState {
   // Dialog states
@@ -63,12 +65,9 @@ export const useUIStore = create<UIState>((set) => ({
         break;
       case 'warning':
         toast(message, {
-          icon: '⚠️',
-          style: {
-            background: '#ffb74d', // Lighter orange for better contrast
-            color: '#000000', // Black text on light orange for WCAG compliance
-            border: '1px solid #f57700',
-          },
+          icon: React.createElement(WarningIcon, {
+            color: 'warning',
+          }),
         });
         break;
       default:
