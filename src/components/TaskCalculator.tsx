@@ -17,6 +17,8 @@ import {
   ListItemText,
   ListItemIcon,
   Chip,
+  IconButton,
+  Tooltip,
 } from '@mui/material';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { EventSelectionDialog } from './EventSelectionDialog';
@@ -28,6 +30,7 @@ import EventIcon from '@mui/icons-material/Event';
 import HolidayVillageIcon from '@mui/icons-material/HolidayVillage';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { DateCalculationsUtil } from '../utils/dateCalculations';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useUIStore } from '../stores/uiStore';
@@ -35,6 +38,7 @@ import { useHolidays } from '../hooks/useHolidays';
 import { useCalendarEvents } from '../hooks/useCalendarEvents';
 import { useTaskCalculation } from '../hooks/useTaskCalculation';
 import { useTaskForm } from '../hooks/useTaskForm';
+import { useClipboard } from '../hooks/useClipboard';
 
 export const TaskCalculator: React.FC = () => {
   // Zustand stores
@@ -81,6 +85,9 @@ export const TaskCalculator: React.FC = () => {
     isFormValid,
   } = useTaskForm();
 
+  // Clipboard functionality
+  const { copyToClipboard } = useClipboard();
+
   const handleCalculate = async () => {
     try {
       await calculateTask({
@@ -111,6 +118,29 @@ export const TaskCalculator: React.FC = () => {
 
   const handleOpenEventSelection = () => {
     setEventSelectionOpen(true);
+  };
+
+  const handleCopyStartDate = () => {
+    if (result?.startDate) {
+      const formattedDate = DateCalculationsUtil.formatDateForDisplay(
+        result.startDate
+      );
+
+      copyToClipboard(formattedDate, 'Fecha de inicio copiada al portapapeles');
+    }
+  };
+
+  const handleCopyEndDate = () => {
+    if (result?.endDate) {
+      const formattedDate = DateCalculationsUtil.formatDateForDisplay(
+        result.endDate
+      );
+
+      copyToClipboard(
+        formattedDate,
+        'Fecha de finalización copiada al portapapeles'
+      );
+    }
   };
 
   return (
@@ -269,27 +299,67 @@ export const TaskCalculator: React.FC = () => {
 
                 <Grid container spacing={2}>
                   <Grid item xs={12} sm={6}>
-                    <Typography variant="body2" color="text.secondary">
-                      Fecha de inicio:
-                    </Typography>
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        justifyContent: 'space-between',
+                      }}
+                    >
+                      <Box sx={{ flexGrow: 1 }}>
+                        <Typography variant="body2" color="text.secondary">
+                          Fecha de inicio:
+                        </Typography>
 
-                    <Typography variant="h6">
-                      {DateCalculationsUtil.formatDateForDisplay(
-                        result.startDate
-                      )}
-                    </Typography>
+                        <Typography variant="h6">
+                          {DateCalculationsUtil.formatDateForDisplay(
+                            result.startDate
+                          )}
+                        </Typography>
+                      </Box>
+
+                      <Tooltip title="Copiar fecha de inicio">
+                        <IconButton
+                          size="small"
+                          onClick={handleCopyStartDate}
+                          sx={{ mt: 1 }}
+                        >
+                          <ContentCopyIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    </Box>
                   </Grid>
 
                   <Grid item xs={12} sm={6}>
-                    <Typography variant="body2" color="text.secondary">
-                      Fecha estimada de finalización:
-                    </Typography>
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        justifyContent: 'space-between',
+                      }}
+                    >
+                      <Box sx={{ flexGrow: 1 }}>
+                        <Typography variant="body2" color="text.secondary">
+                          Fecha estimada de finalización:
+                        </Typography>
 
-                    <Typography variant="h6">
-                      {DateCalculationsUtil.formatDateForDisplay(
-                        result.endDate
-                      )}
-                    </Typography>
+                        <Typography variant="h6">
+                          {DateCalculationsUtil.formatDateForDisplay(
+                            result.endDate
+                          )}
+                        </Typography>
+                      </Box>
+
+                      <Tooltip title="Copiar fecha de finalización">
+                        <IconButton
+                          size="small"
+                          onClick={handleCopyEndDate}
+                          sx={{ mt: 1 }}
+                        >
+                          <ContentCopyIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    </Box>
                   </Grid>
 
                   <Grid item xs={12} sm={6}>
