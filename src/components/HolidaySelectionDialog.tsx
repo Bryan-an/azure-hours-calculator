@@ -68,14 +68,21 @@ export const HolidaySelectionDialog: React.FC<HolidaySelectionDialogProps> = ({
 
   useEffect(() => {
     setLocalExcludeHolidays(excludeHolidays);
-    // Si excludeHolidays es true pero no hay fechas específicas, significa "excluir todos"
-    if (
-      excludeHolidays &&
-      excludedHolidayDates.length === 0 &&
+
+    if (!excludeHolidays) {
+      // Si no se excluyen feriados, limpiar la lista
+      setLocalExcludedDates([]);
+    } else if (excludedHolidayDates.length === 0 && holidays.length > 0) {
+      // Si se excluyen feriados pero no hay fechas específicas, significa "excluir todos"
+      setLocalExcludedDates(holidays.map((h) => h.date));
+    } else if (
+      excludedHolidayDates.length === holidays.length &&
       holidays.length > 0
     ) {
+      // Si el número de fechas excluidas es igual al total, mantener "excluir todos"
       setLocalExcludedDates(holidays.map((h) => h.date));
     } else {
+      // Usar las fechas específicas proporcionadas
       setLocalExcludedDates(excludedHolidayDates);
     }
   }, [excludeHolidays, excludedHolidayDates, holidays]);
@@ -124,7 +131,13 @@ export const HolidaySelectionDialog: React.FC<HolidaySelectionDialogProps> = ({
   };
 
   const handleSave = () => {
-    onSelectionChange(localExcludeHolidays, localExcludedDates);
+    // Si todos los feriados están excluidos, pasar array vacío para indicar "excluir todos"
+    const datesToSave =
+      localExcludeHolidays && localExcludedDates.length === holidays.length
+        ? []
+        : localExcludedDates;
+
+    onSelectionChange(localExcludeHolidays, datesToSave);
     onClose();
   };
 
