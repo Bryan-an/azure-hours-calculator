@@ -149,6 +149,7 @@ export const HolidaySelectionDialog: React.FC<HolidaySelectionDialogProps> = ({
 
   const handleSelectNone = () => {
     setLocalExcludedDates([]);
+    setLocalExcludeHolidays(false);
   };
 
   const handleSave = () => {
@@ -387,7 +388,13 @@ export const HolidaySelectionDialog: React.FC<HolidaySelectionDialogProps> = ({
                         size="small"
                         startIcon={<CheckBoxIcon />}
                         onClick={handleSelectAll}
-                        disabled={filteredHolidays.length === 0}
+                        disabled={
+                          filteredHolidays.length === 0 ||
+                          (localExcludeHolidays &&
+                            (localExcludedDates.length === 0 ||
+                              localExcludedDates.length ===
+                                filteredHolidays.length))
+                        }
                       >
                         Excluir todos
                       </Button>
@@ -397,7 +404,7 @@ export const HolidaySelectionDialog: React.FC<HolidaySelectionDialogProps> = ({
                         size="small"
                         startIcon={<CheckBoxOutlineBlankIcon />}
                         onClick={handleSelectNone}
-                        disabled={localExcludedDates.length === 0}
+                        disabled={!localExcludeHolidays}
                       >
                         Incluir todos
                       </Button>
