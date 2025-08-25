@@ -99,6 +99,17 @@ export const HolidaySelectionDialog: React.FC<HolidaySelectionDialogProps> = ({
   };
 
   const isHolidayExcluded = (holiday: Holiday): boolean => {
+    if (!localExcludeHolidays) {
+      return false; // Si no se excluyen feriados, ninguno está excluido
+    }
+
+    // Si localExcludedDates está vacío pero localExcludeHolidays es true,
+    // significa "excluir todos los feriados"
+    if (localExcludedDates.length === 0) {
+      return true;
+    }
+
+    // Si hay fechas específicas, verificar si esta fecha está incluida
     return localExcludedDates.includes(holiday.date);
   };
 
