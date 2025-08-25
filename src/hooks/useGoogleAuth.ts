@@ -10,6 +10,7 @@ export const useGoogleAuth = () => {
 
   const [connectionStatus, setConnectionStatus] =
     useState<GoogleConnectionStatus>('idle');
+
   const [availableCalendars, setAvailableCalendars] = useState<
     CalendarOption[]
   >([]);
