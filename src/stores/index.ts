@@ -10,6 +10,7 @@ export const initializeStores = () => {
   // Initialize last activity on app start
   const { updateLastActivity, clearExpiredSession } =
     useSettingsStore.getState();
+
   updateLastActivity();
   clearExpiredSession();
 };
