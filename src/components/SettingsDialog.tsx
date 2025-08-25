@@ -149,6 +149,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
     }
 
     const trimmedClientId = googleAuth.clientId.trim();
+
     if (!validateGoogleClientId(trimmedClientId)) {
       setGoogleConnectionStatus('error');
       return;
@@ -195,10 +196,12 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
     }
 
     setGoogleConnectionStatus('testing');
+
     const googleService = new GoogleCalendarService({
       accessToken: googleAuth.accessToken,
       calendarId: googleAuth.calendarId || 'primary',
     });
+
     const isConnected = await googleService.testConnection();
     setGoogleConnectionStatus(isConnected ? 'success' : 'error');
   };
@@ -232,6 +235,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
     <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={es}>
       <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
         <DialogTitle>Configuración</DialogTitle>
+
         <DialogContent>
           <Box sx={{ mt: 2 }}>
             {/* Configuración de Horario Laboral */}
@@ -255,6 +259,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                   }}
                 />
               </Grid>
+
               <Grid item xs={6}>
                 <TimePicker
                   label="Hora de fin"
@@ -270,6 +275,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                   }}
                 />
               </Grid>
+
               <Grid item xs={6}>
                 <TimePicker
                   label="Inicio de almuerzo"
@@ -285,6 +291,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                   }}
                 />
               </Grid>
+
               <Grid item xs={6}>
                 <TimePicker
                   label="Fin de almuerzo"
@@ -305,6 +312,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
             <Typography variant="subtitle1" sx={{ mt: 3, mb: 1 }}>
               Días laborales
             </Typography>
+
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
               {DAYS_OF_WEEK.map((day) => (
                 <FormControlLabel
@@ -332,10 +340,12 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
             <Typography variant="subtitle1" gutterBottom>
               Fuente de Calendario
             </Typography>
+
             <FormControl fullWidth sx={{ mb: 3 }}>
               <InputLabel id="calendar-source-label">
                 Seleccionar fuente de calendario
               </InputLabel>
+
               <Select
                 labelId="calendar-source-label"
                 value={calendarSource}
@@ -355,6 +365,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                 <Typography variant="subtitle1" gutterBottom>
                   Google Calendar (OAuth)
                 </Typography>
+
                 <Alert severity="info" sx={{ mb: 2 }}>
                   <strong>Configuración Google OAuth:</strong>
                   <br />
@@ -397,12 +408,14 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                 <Typography variant="subtitle1" gutterBottom>
                   iCal URL Público
                 </Typography>
+
                 <Alert severity="info" sx={{ mb: 2 }}>
                   Alternativa simple que no requiere permisos corporativos. Solo
                   necesitas la URL pública de tu calendario.
                 </Alert>
               </>
             )}
+
             <Grid container spacing={2}>
               {calendarSource === 'google' && (
                 <Grid item xs={12}>
@@ -431,6 +444,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                       helperText="URL pública del calendario en formato iCal (.ics)"
                     />
                   </Grid>
+
                   <Grid item xs={12}>
                     <Button
                       variant="outlined"
@@ -441,11 +455,13 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                         ? 'Probando...'
                         : 'Probar Conexión'}
                     </Button>
+
                     {icalConnectionStatus === 'success' && (
                       <Alert severity="success" sx={{ mt: 1 }}>
                         Conexión exitosa con iCal
                       </Alert>
                     )}
+
                     {icalConnectionStatus === 'error' && (
                       <Alert severity="error" sx={{ mt: 1 }}>
                         Error de conexión. Verifica que la URL sea accesible y
@@ -471,6 +487,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                       ? 'Autenticando...'
                       : 'Conectar con Google Calendar'}
                   </Button>
+
                   {googleConnectionStatus === 'error' && (
                     <Alert severity="error" sx={{ mt: 1 }}>
                       Error de autenticación. Verifica tu Client ID y permisos.
@@ -482,15 +499,12 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
               {calendarSource === 'google' && googleAuth.accessToken && (
                 <>
                   <Grid item xs={12}>
-                    <Alert severity="success" sx={{ mb: 2 }}>
-                      Conectado exitosamente a Google Calendar
-                    </Alert>
-
                     {availableCalendars.length > 0 && (
                       <FormControl fullWidth sx={{ mb: 2 }}>
                         <InputLabel id="calendar-select-label">
                           Calendario a usar
                         </InputLabel>
+
                         <Select
                           labelId="calendar-select-label"
                           value={googleAuth.calendarId || 'primary'}
@@ -502,6 +516,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                           <MenuItem value="primary">
                             Calendario Principal
                           </MenuItem>
+
                           {availableCalendars.map((calendar) => (
                             <MenuItem key={calendar.id} value={calendar.id}>
                               {calendar.summary}
@@ -521,6 +536,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                           ? 'Probando...'
                           : 'Probar Conexión'}
                       </Button>
+
                       <Button
                         variant="outlined"
                         color="error"
@@ -535,6 +551,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                         Conexión exitosa con Google Calendar
                       </Alert>
                     )}
+
                     {googleConnectionStatus === 'error' && (
                       <Alert severity="error" sx={{ mt: 1 }}>
                         Error de conexión. Verifica tu configuración.
@@ -548,6 +565,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
             <Typography variant="subtitle1" sx={{ mt: 3 }} gutterBottom>
               Calendarific (Feriados de Ecuador)
             </Typography>
+
             <TextField
               fullWidth
               label="API Key de Calendarific"
@@ -605,17 +623,20 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
               <Grid item xs={12}>
                 <Alert severity="info" sx={{ mt: 1 }}>
                   Los eventos de seguridad se registran localmente para
-                  auditoría corporativa
+                  auditoría
                 </Alert>
               </Grid>
             </Grid>
           </Box>
         </DialogContent>
+
         <DialogActions>
           <Button onClick={handleReset} color="secondary">
             Restablecer
           </Button>
+
           <Button onClick={onClose}>Cancelar</Button>
+
           <Button onClick={handleSave} variant="contained">
             Guardar
           </Button>
