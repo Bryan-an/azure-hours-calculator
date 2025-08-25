@@ -22,12 +22,16 @@ import { TimePicker } from '@mui/x-date-pickers/TimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { es } from 'date-fns/locale';
-import { CalendarSource } from '../types';
+import {
+  CalendarSource,
+  GoogleConnectionStatus,
+  ICalConnectionStatus,
+  CalendarOption,
+} from '../types';
 import { GoogleCalendarService } from '../services/googleCalendarService';
 import { GoogleAuthHelper } from '../utils/googleAuthHelper';
 import { ICalService } from '../services/iCalService';
 import { useSettingsStore } from '../stores/settingsStore';
-import { useUIStore } from '../stores/uiStore';
 
 interface SettingsDialogProps {
   open: boolean;
@@ -66,18 +70,17 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
     clearExpiredSession,
     clearAllData,
   } = useSettingsStore();
-  const _uiStore = useUIStore();
 
   // Local UI state only
-  const [googleConnectionStatus, setGoogleConnectionStatus] = useState<
-    'idle' | 'testing' | 'success' | 'error' | 'authenticating'
-  >('idle');
+  const [googleConnectionStatus, setGoogleConnectionStatus] =
+    useState<GoogleConnectionStatus>('idle');
+
   const [availableCalendars, setAvailableCalendars] = useState<
-    Array<{ id: string; summary: string }>
+    CalendarOption[]
   >([]);
-  const [icalConnectionStatus, setIcalConnectionStatus] = useState<
-    'idle' | 'testing' | 'success' | 'error'
-  >('idle');
+
+  const [icalConnectionStatus, setIcalConnectionStatus] =
+    useState<ICalConnectionStatus>('idle');
 
   const loadAvailableCalendars = useCallback(async () => {
     if (!googleAuth.accessToken) return;

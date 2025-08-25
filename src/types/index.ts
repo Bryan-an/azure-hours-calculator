@@ -44,3 +44,17 @@ export interface CalculationResult {
 }
 
 export type CalendarSource = 'google' | 'ical' | 'none';
+
+export type GoogleConnectionStatus =
+  | 'idle'
+  | 'testing'
+  | 'success'
+  | 'error'
+  | 'authenticating';
+
+export type ICalConnectionStatus = 'idle' | 'testing' | 'success' | 'error';
+
+export interface CalendarOption {
+  id: string;
+  summary: string;
+}
