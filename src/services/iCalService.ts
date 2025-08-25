@@ -55,12 +55,14 @@ export class ICalService {
       }
 
       let icalData: string;
+
       if (this.needsCorsProxy(this.url)) {
         const jsonResponse = await response.json();
         icalData = jsonResponse.contents;
       } else {
         icalData = await response.text();
       }
+
       const events = this.parseICalData(icalData);
 
       // Filter events by date range
@@ -126,6 +128,7 @@ export class ICalService {
         if (this.isValidEvent(currentEvent)) {
           events.push(currentEvent as ICalEvent);
         }
+
         currentEvent = null;
       } else if (currentEvent && line.includes(':')) {
         const colonIndex = line.indexOf(':');
@@ -176,27 +179,27 @@ export class ICalService {
 
     if (cleanDate.length === 8) {
       // Date only format: YYYYMMDD
-      const year = parseInt(cleanDate.substr(0, 4));
-      const month = parseInt(cleanDate.substr(4, 2)) - 1; // Month is 0-based
-      const day = parseInt(cleanDate.substr(6, 2));
+      const year = parseInt(cleanDate.substring(0, 4));
+      const month = parseInt(cleanDate.substring(4, 6)) - 1; // Month is 0-based
+      const day = parseInt(cleanDate.substring(6, 8));
       return new Date(year, month, day);
     } else if (cleanDate.length === 15 && cleanDate.endsWith('Z')) {
       // UTC format: YYYYMMDDTHHMMSSZ
-      const year = parseInt(cleanDate.substr(0, 4));
-      const month = parseInt(cleanDate.substr(4, 2)) - 1;
-      const day = parseInt(cleanDate.substr(6, 2));
-      const hour = parseInt(cleanDate.substr(9, 2));
-      const minute = parseInt(cleanDate.substr(11, 2));
-      const second = parseInt(cleanDate.substr(13, 2));
+      const year = parseInt(cleanDate.substring(0, 4));
+      const month = parseInt(cleanDate.substring(4, 6)) - 1;
+      const day = parseInt(cleanDate.substring(6, 8));
+      const hour = parseInt(cleanDate.substring(9, 11));
+      const minute = parseInt(cleanDate.substring(11, 13));
+      const second = parseInt(cleanDate.substring(13, 15));
       return new Date(Date.UTC(year, month, day, hour, minute, second));
     } else if (cleanDate.length === 15) {
       // Local format: YYYYMMDDTHHMMSS
-      const year = parseInt(cleanDate.substr(0, 4));
-      const month = parseInt(cleanDate.substr(4, 2)) - 1;
-      const day = parseInt(cleanDate.substr(6, 2));
-      const hour = parseInt(cleanDate.substr(9, 2));
-      const minute = parseInt(cleanDate.substr(11, 2));
-      const second = parseInt(cleanDate.substr(13, 2));
+      const year = parseInt(cleanDate.substring(0, 4));
+      const month = parseInt(cleanDate.substring(4, 6)) - 1;
+      const day = parseInt(cleanDate.substring(6, 8));
+      const hour = parseInt(cleanDate.substring(9, 11));
+      const minute = parseInt(cleanDate.substring(11, 13));
+      const second = parseInt(cleanDate.substring(13, 15));
       return new Date(year, month, day, hour, minute, second);
     }
 
@@ -243,6 +246,7 @@ export class ICalService {
       '[opcional]',
       '(opcional)',
     ];
+
     const title = (event.summary || '').toLowerCase();
     if (optionalKeywords.some((keyword) => title.includes(keyword))) {
       return true;
