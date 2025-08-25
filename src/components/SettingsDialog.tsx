@@ -89,6 +89,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
       const googleService = new GoogleCalendarService({
         accessToken: googleAuth.accessToken,
       });
+
       const calendars = await googleService.getCalendarList();
       setAvailableCalendars(calendars);
     } catch (error) {
@@ -137,6 +138,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
     // Basic Google Client ID validation
     const clientIdPattern =
       /^\d+-[a-zA-Z0-9_-]+\.apps\.googleusercontent\.com$/;
+
     return clientIdPattern.test(clientId);
   };
 
