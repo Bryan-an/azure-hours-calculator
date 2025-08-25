@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React from 'react';
 import {
   Card,
   CardContent,
@@ -28,336 +28,89 @@ import EventIcon from '@mui/icons-material/Event';
 import HolidayVillageIcon from '@mui/icons-material/HolidayVillage';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import { Holiday, Meeting, CalculationResult } from '../types';
 import { DateCalculationsUtil } from '../utils/dateCalculations';
-import { HolidayService } from '../services/holidayService';
-import { GoogleCalendarService } from '../services/googleCalendarService';
-import { ICalService } from '../services/iCalService';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useUIStore } from '../stores/uiStore';
+import { useHolidays } from '../hooks/useHolidays';
+import { useCalendarEvents } from '../hooks/useCalendarEvents';
+import { useTaskCalculation } from '../hooks/useTaskCalculation';
+import { useTaskForm } from '../hooks/useTaskForm';
 
 export const TaskCalculator: React.FC = () => {
   // Zustand stores
-  const {
-    workSchedule,
-    calendarSource,
-    googleAuth,
-    icalUrl,
-    clearExpiredSession,
-    updateLastActivity,
-    clearGoogleAuth,
-  } = useSettingsStore();
+  const { workSchedule } = useSettingsStore();
 
   // UI Store (centralized UI state)
   const {
-    isCalculating,
     holidaySelectionOpen,
     eventSelectionOpen,
-    setCalculating,
     setHolidaySelectionOpen,
     setEventSelectionOpen,
-    showToast,
   } = useUIStore();
 
-  const [estimatedHours, setEstimatedHours] = useState<string>('');
-  const [startDate, setStartDate] = useState<Date>(new Date());
-  const [excludeHolidays, setExcludeHolidays] = useState<boolean>(true);
-  const [excludeMeetings, setExcludeMeetings] = useState<boolean>(true);
-  const [excludedMeetingIds, setExcludedMeetingIds] = useState<string[]>([]);
+  // Custom hooks for business logic
+  const { holidays } = useHolidays();
+  const { meetings, loadEvents, getCalendarSourceLabel } = useCalendarEvents();
 
-  const [excludedHolidayDates, setExcludedHolidayDates] = useState<string[]>(
-    []
-  );
+  const {
+    result,
+    calculationError,
+    isCalculating,
+    calculateTask,
+    resetCalculation,
+    getDailyWorkingHours,
+    setCalculationError,
+  } = useTaskCalculation();
 
-  // Local component state (form data)
-  const [result, setResult] = useState<CalculationResult | null>(null);
-  const [holidays, setHolidays] = useState<Holiday[]>([]);
-  const [meetings, setMeetings] = useState<Meeting[]>([]);
-
-  // Local error state (component-specific errors)
-  const [calculationError, setCalculationError] = useState<string>('');
-
-  const holidayService = useMemo(() => new HolidayService(), []);
-
-  const loadHolidays = useCallback(async () => {
-    try {
-      const currentYear = new Date().getFullYear();
-      const holidayList = await holidayService.getEcuadorHolidays(currentYear);
-      setHolidays(holidayList);
-    } catch (error) {
-      console.error('Error loading holidays:', error);
-    }
-  }, [holidayService]);
-
-  useEffect(() => {
-    loadHolidays();
-  }, [loadHolidays]);
-
-  const loadEvents = async (startDate: Date, endDate: Date) => {
-    // Check and clear expired sessions
-    clearExpiredSession();
-    updateLastActivity();
-
-    if (calendarSource === 'none') {
-      return [];
-    }
-
-    if (calendarSource === 'google') {
-      return await loadGoogleCalendarEvents(startDate, endDate);
-    }
-
-    if (calendarSource === 'ical') {
-      return await loadICalEvents(startDate, endDate);
-    }
-
-    return [];
-  };
-
-  const loadGoogleCalendarEvents = async (startDate: Date, endDate: Date) => {
-    const {
-      accessToken: googleAccessToken,
-      calendarId: googleCalendarId,
-      tokenExpiresAt,
-    } = googleAuth;
-
-    if (!googleAccessToken) {
-      return [];
-    }
-
-    try {
-      const googleService = new GoogleCalendarService({
-        accessToken: googleAccessToken,
-        calendarId: googleCalendarId || 'primary',
-        expiresAt: tokenExpiresAt || undefined,
-      });
-
-      return await googleService.getEvents(startDate, endDate);
-    } catch (error) {
-      console.error('Error loading Google Calendar events:', error);
-
-      if (
-        error instanceof Error &&
-        (error.message.includes('Token') || error.message.includes('expirado'))
-      ) {
-        // Access token might be expired - system notification
-        clearGoogleAuth();
-
-        showToast(
-          'Sesión de Google Calendar expirada. Por favor, vuelve a autenticarte en Configuración.',
-          'warning'
-        );
-      }
-      return [];
-    }
-  };
-
-  const loadICalEvents = async (startDate: Date, endDate: Date) => {
-    if (!icalUrl) {
-      return [];
-    }
-
-    try {
-      const icalService = new ICalService({ url: icalUrl });
-      return await icalService.getEvents(startDate, endDate);
-    } catch (error) {
-      console.error('Error loading iCal events:', error);
-
-      setCalculationError(
-        'Error al cargar eventos del calendario iCal. Verifica la URL en Configuración.'
-      );
-
-      return [];
-    }
-  };
+  const {
+    estimatedHours,
+    startDate,
+    excludeHolidays,
+    excludeMeetings,
+    excludedMeetingIds,
+    excludedHolidayDates,
+    setEstimatedHours,
+    setStartDate,
+    handleReset: resetForm,
+    handleEventSelectionChange,
+    handleMainExcludeMeetingsChange,
+    handleHolidaySelectionChange,
+    handleMainExcludeHolidaysChange,
+    getHolidaySelectionLabel,
+    getEventSelectionLabel,
+    isFormValid,
+  } = useTaskForm();
 
   const handleCalculate = async () => {
-    if (!estimatedHours || parseFloat(estimatedHours) <= 0) {
-      setCalculationError(
-        'Por favor ingresa un número válido de horas estimadas.'
-      );
-
-      return;
-    }
-
-    setCalculating(true);
-    setCalculationError(''); // Clear local errors
-    setResult(null);
-
     try {
-      const hours = parseFloat(estimatedHours);
-
-      // Primera estimación para determinar el rango de fechas para cargar reuniones
-      const preliminaryResult = DateCalculationsUtil.calculateEndDate({
+      await calculateTask({
+        estimatedHours: parseFloat(estimatedHours),
         startDate,
-        estimatedHours: hours,
-        schedule: workSchedule,
-        holidays: excludeHolidays ? holidays : [],
-        meetings: [],
         excludeHolidays,
-        excludeMeetings: false,
+        excludeMeetings,
+        holidays,
+        excludedHolidayDates,
+        excludedMeetingIds,
+        loadEvents,
       });
-
-      // Cargar eventos de calendario en el rango de fechas estimado
-      let eventList: Meeting[] = [];
-
-      if (excludeMeetings) {
-        eventList = await loadEvents(startDate, preliminaryResult.endDate);
-        setMeetings(eventList);
-      }
-
-      // Filtrar meetings basado en la selección granular
-      let effectiveMeetings: Meeting[] = [];
-
-      if (excludeMeetings) {
-        if (excludedMeetingIds.length > 0) {
-          // Exclusión granular: solo excluir los eventos específicamente seleccionados
-          effectiveMeetings = eventList.filter((m) =>
-            excludedMeetingIds.includes(m.id)
-          );
-        } else {
-          // Exclusión completa: excluir todos los eventos
-          effectiveMeetings = eventList;
-        }
-      }
-      // Si excludeMeetings es false, effectiveMeetings queda vacío (no excluir nada)
-
-      // Filtrar holidays basado en la selección granular
-      let effectiveHolidays: Holiday[] = [];
-
-      if (excludeHolidays) {
-        if (excludedHolidayDates.length > 0) {
-          // Exclusión granular: solo excluir los feriados específicamente seleccionados
-          effectiveHolidays = holidays.filter((h) =>
-            excludedHolidayDates.includes(h.date)
-          );
-        } else {
-          // Exclusión completa: excluir todos los feriados
-          effectiveHolidays = holidays;
-        }
-      }
-      // Si excludeHolidays es false, effectiveHolidays queda vacío (no excluir nada)
-
-      // Cálculo final con eventos de calendario y feriados
-      const finalResult = DateCalculationsUtil.calculateEndDate({
-        startDate,
-        estimatedHours: hours,
-        schedule: workSchedule,
-        holidays: effectiveHolidays,
-        meetings: effectiveMeetings,
-        excludeHolidays: effectiveHolidays.length > 0,
-        excludeMeetings: true, // Siempre true cuando hay meetings a excluir
-      });
-
-      setResult(finalResult);
     } catch (error) {
-      setCalculationError(
-        'Error al calcular las fechas. Por favor verifica la configuración.'
-      );
-
-      console.error('Calculation error:', error);
-    } finally {
-      setCalculating(false);
+      if (error instanceof Error) {
+        setCalculationError(error.message);
+      }
     }
   };
 
   const handleReset = () => {
-    setEstimatedHours('');
-    setStartDate(new Date());
-    setResult(null);
-    setCalculationError(''); // Clear local errors
-    setMeetings([]);
-  };
-
-  const getDailyWorkingHours = () => {
-    const minutes = DateCalculationsUtil.getDailyWorkingMinutes(workSchedule);
-    return (minutes / 60).toFixed(1);
-  };
-
-  const getCalendarSourceLabel = () => {
-    switch (calendarSource) {
-      case 'google':
-        return 'Google Calendar';
-      case 'ical':
-        return 'iCal';
-      case 'none':
-      default:
-        return 'calendario';
-    }
-  };
-
-  const handleEventSelectionChange = (
-    newExcludeMeetings: boolean,
-    newExcludedIds: string[]
-  ) => {
-    setExcludeMeetings(newExcludeMeetings);
-    setExcludedMeetingIds(newExcludedIds);
-  };
-
-  const handleMainExcludeMeetingsChange = (checked: boolean) => {
-    setExcludeMeetings(checked);
-
-    if (!checked) {
-      // Limpiar selección granular cuando se desactiva la exclusión
-      setExcludedMeetingIds([]);
-    }
-  };
-
-  const handleHolidaySelectionChange = (
-    newExcludeHolidays: boolean,
-    newExcludedDates: string[]
-  ) => {
-    setExcludeHolidays(newExcludeHolidays);
-    setExcludedHolidayDates(newExcludedDates);
-  };
-
-  const handleMainExcludeHolidaysChange = (checked: boolean) => {
-    setExcludeHolidays(checked);
-
-    if (!checked) {
-      // Limpiar selección granular cuando se desactiva la exclusión
-      setExcludedHolidayDates([]);
-    }
+    resetForm();
+    resetCalculation();
   };
 
   const handleOpenHolidaySelection = () => {
     setHolidaySelectionOpen(true);
   };
 
-  const getHolidaySelectionLabel = () => {
-    if (!excludeHolidays) return 'Incluir feriados ecuatorianos';
-
-    const totalHolidays = holidays.length;
-    if (totalHolidays === 0) return 'Excluir feriados ecuatorianos';
-
-    if (excludedHolidayDates.length === 0) {
-      return 'Excluir todos los feriados ecuatorianos';
-    } else if (excludedHolidayDates.length === totalHolidays) {
-      return 'Excluir todos los feriados ecuatorianos';
-    } else {
-      return `Excluir ${excludedHolidayDates.length} de ${totalHolidays} feriados ecuatorianos`;
-    }
-  };
-
   const handleOpenEventSelection = () => {
     setEventSelectionOpen(true);
-  };
-
-  const getEventSelectionLabel = () => {
-    const calendarLabel = getCalendarSourceLabel();
-    if (!excludeMeetings) return `Incluir tiempo de eventos (${calendarLabel})`;
-
-    const totalEvents = meetings.length;
-
-    if (totalEvents === 0)
-      return `Excluir tiempo de eventos (${calendarLabel})`;
-
-    if (excludedMeetingIds.length === 0) {
-      return `Excluir todos los eventos (${calendarLabel})`;
-    } else if (excludedMeetingIds.length === totalEvents) {
-      return `Excluir todos los eventos (${calendarLabel})`;
-    } else {
-      return `Excluir ${excludedMeetingIds.length} de ${totalEvents} eventos (${calendarLabel})`;
-    }
   };
 
   return (
@@ -423,7 +176,7 @@ export const TaskCalculator: React.FC = () => {
                     }
                   />
                 }
-                label={getHolidaySelectionLabel()}
+                label={getHolidaySelectionLabel(holidays)}
                 sx={{ flexGrow: 1 }}
               />
 
@@ -454,7 +207,10 @@ export const TaskCalculator: React.FC = () => {
                     }
                   />
                 }
-                label={getEventSelectionLabel()}
+                label={getEventSelectionLabel(
+                  meetings,
+                  getCalendarSourceLabel()
+                )}
                 sx={{ flexGrow: 1 }}
               />
 
@@ -474,7 +230,7 @@ export const TaskCalculator: React.FC = () => {
             <Button
               variant="contained"
               onClick={handleCalculate}
-              disabled={isCalculating || !estimatedHours}
+              disabled={isCalculating || !isFormValid()}
               startIcon={
                 isCalculating ? (
                   <CircularProgress size={20} />

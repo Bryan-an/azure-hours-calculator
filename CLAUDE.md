@@ -35,11 +35,20 @@ azure-hours-calculator/
 │   ├── components/
 │   │   ├── ElectronTitleBar.tsx # Barra de título personalizada
 │   │   ├── SettingsDialog.tsx   # Configuración de horarios y APIs
-│   │   └── TaskCalculator.tsx   # Calculadora principal
+│   │   └── TaskCalculator.tsx   # Calculadora principal (solo presentación)
+│   ├── hooks/
+│   │   ├── useHolidays.ts       # Hook para gestión de feriados
+│   │   ├── useCalendarEvents.ts # Hook para eventos de calendario
+│   │   ├── useTaskCalculation.ts# Hook para lógica de cálculo
+│   │   └── useTaskForm.ts       # Hook para estado del formulario
 │   ├── services/
 │   │   ├── holidayService.ts    # API de feriados ecuatorianos
 │   │   ├── googleCalendarService.ts # Integración con Google Calendar
 │   │   └── iCalService.ts       # Integración con calendarios iCal
+│   ├── stores/
+│   │   ├── settingsStore.ts     # Zustand store para configuraciones
+│   │   ├── uiStore.ts           # Zustand store para estado de UI
+│   │   └── preferencesStore.ts  # Zustand store para preferencias
 │   ├── utils/
 │   │   ├── dateCalculations.ts  # Lógica de cálculo de fechas
 │   │   ├── electronUtils.ts     # Utilidades para Electron
@@ -197,6 +206,20 @@ const STORAGE_KEYS = {
 - **Sin emojis**: Evitar el uso de emojis en textos de la interfaz gráfica por profesionalismo
 - **Tono formal**: Mantener un lenguaje profesional y claro en todos los mensajes
 - **Mensajes concisos**: Texto directo sin elementos decorativos innecesarios
+
+### Buenas Prácticas de Importación
+
+- **NO usar barrel files**: Evitar archivos `index.ts` que re-exportan para prevenir dependencias circulares
+- **Importaciones directas**: Usar siempre imports directos desde archivos específicos
+- **Ejemplo correcto**:
+  ```typescript
+  import { useHolidays } from '../hooks/useHolidays';
+  import { useCalendarEvents } from '../hooks/useCalendarEvents';
+  ```
+- **Ejemplo incorrecto**:
+  ```typescript
+  import { useHolidays, useCalendarEvents } from '../hooks'; // ❌ Barrel file
+  ```
 
 ## 🧮 Lógica de Cálculo Principal
 
