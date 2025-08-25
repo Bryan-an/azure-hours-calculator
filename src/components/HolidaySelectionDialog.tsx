@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -38,6 +38,7 @@ import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Holiday } from '../types';
 import { HolidayDay } from './HolidayDay';
+import { useHolidaySelection } from '../hooks/useHolidaySelection';
 
 interface HolidaySelectionDialogProps {
   open: boolean;
@@ -59,158 +60,33 @@ export const HolidaySelectionDialog: React.FC<HolidaySelectionDialogProps> = ({
   excludedHolidayDates,
   onSelectionChange,
 }) => {
-  const [localExcludeHolidays, setLocalExcludeHolidays] =
-    useState(excludeHolidays);
-
-  const [localExcludedDates, setLocalExcludedDates] =
-    useState<string[]>(excludedHolidayDates);
-
-  const [searchTerm, setSearchTerm] = useState('');
-  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
-  const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
-
-  // Debounce search term with 400ms delay
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearchTerm(searchTerm);
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [searchTerm]);
-
-  useEffect(() => {
-    setLocalExcludeHolidays(excludeHolidays);
-
-    if (!excludeHolidays) {
-      // Si no se excluyen feriados, limpiar la lista
-      setLocalExcludedDates([]);
-    } else if (excludedHolidayDates.length === 0 && holidays.length > 0) {
-      // Si se excluyen feriados pero no hay fechas específicas, significa "excluir todos"
-      setLocalExcludedDates(holidays.map((h) => h.date));
-    } else if (
-      excludedHolidayDates.length === holidays.length &&
-      holidays.length > 0
-    ) {
-      // Si el número de fechas excluidas es igual al total, mantener "excluir todos"
-      setLocalExcludedDates(holidays.map((h) => h.date));
-    } else {
-      // Usar las fechas específicas proporcionadas
-      setLocalExcludedDates(excludedHolidayDates);
-    }
-  }, [excludeHolidays, excludedHolidayDates, holidays]);
-
-  const filteredHolidays = useMemo(
-    () =>
-      holidays.filter(
-        (holiday) =>
-          holiday.name
-            .toLowerCase()
-            .includes(debouncedSearchTerm.toLowerCase()) ||
-          holiday.type.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
-      ),
-    [holidays, debouncedSearchTerm]
-  );
-
-  const getHolidaysForDate = (date: Date): Holiday[] => {
-    const dateString = format(date, 'yyyy-MM-dd');
-    return holidays.filter((holiday) => holiday.date === dateString);
-  };
-
-  const isHolidayExcluded = (holiday: Holiday): boolean => {
-    if (!localExcludeHolidays) {
-      return false; // Si no se excluyen feriados, ninguno está excluido
-    }
-
-    // Si localExcludedDates está vacío pero localExcludeHolidays es true,
-    // significa "excluir todos los feriados"
-    if (localExcludedDates.length === 0) {
-      return true;
-    }
-
-    // Si hay fechas específicas, verificar si esta fecha está incluida
-    return localExcludedDates.includes(holiday.date);
-  };
-
-  const handleMasterToggle = useCallback((checked: boolean) => {
-    setLocalExcludeHolidays(checked);
-
-    if (!checked) {
-      // Si desactivamos la exclusión general, limpiamos las exclusiones específicas
-      setLocalExcludedDates([]);
-    }
-  }, []);
-
-  const handleHolidayToggle = useCallback(
-    (holidayDate: string) => {
-      // Si localExcludedDates está vacío pero localExcludeHolidays es true,
-      // significa que estamos en modo "excluir todos"
-      if (localExcludedDates.length === 0 && localExcludeHolidays) {
-        // Cambiar a modo específico: excluir todos MENOS el que se está desactivando
-        const allOtherDates = holidays
-          .filter((h) => h.date !== holidayDate)
-          .map((h) => h.date);
-
-        setLocalExcludedDates(allOtherDates);
-      } else if (localExcludedDates.includes(holidayDate)) {
-        // Modo normal: remover de la lista de excluidos
-        setLocalExcludedDates((prev) =>
-          prev.filter((date) => date !== holidayDate)
-        );
-      } else {
-        // Modo normal: agregar a la lista de excluidos
-        setLocalExcludedDates((prev) => [...prev, holidayDate]);
-      }
-    },
-    [localExcludedDates, localExcludeHolidays, holidays]
-  );
-
-  const handleSelectAll = useCallback(() => {
-    const allVisibleDates = filteredHolidays.map((h) => h.date);
-    setLocalExcludedDates(allVisibleDates);
-    setLocalExcludeHolidays(true);
-  }, [filteredHolidays]);
-
-  const handleSelectNone = useCallback(() => {
-    setLocalExcludedDates([]);
-    setLocalExcludeHolidays(false);
-  }, []);
-
-  const handleSave = () => {
-    // Si todos los feriados están excluidos, pasar array vacío para indicar "excluir todos"
-    const datesToSave =
-      localExcludeHolidays && localExcludedDates.length === holidays.length
-        ? []
-        : localExcludedDates;
-
-    onSelectionChange(localExcludeHolidays, datesToSave);
-    onClose();
-  };
-
-  const handleCancel = () => {
-    // Revertir cambios locales
-    setLocalExcludeHolidays(excludeHolidays);
-    setLocalExcludedDates(excludedHolidayDates);
-    setSearchTerm('');
-    setDebouncedSearchTerm('');
-    onClose();
-  };
-
-  const handleClearSearch = useCallback(() => {
-    setSearchTerm('');
-    setDebouncedSearchTerm('');
-  }, []);
-
-  const excludedCount = localExcludeHolidays
-    ? localExcludedDates.length > 0
-      ? localExcludedDates.length
-      : holidays.length // Si no hay fechas específicas, excluir todos
-    : 0;
-
-  const totalCount = holidays.length;
-
-  const selectedDateHolidays = selectedDate
-    ? getHolidaysForDate(selectedDate)
-    : [];
+  const {
+    localExcludeHolidays,
+    searchTerm,
+    debouncedSearchTerm,
+    selectedDate,
+    filteredHolidays,
+    excludedCount,
+    totalCount,
+    selectedDateHolidays,
+    setSearchTerm,
+    setSelectedDate,
+    getHolidaysForDate,
+    isHolidayExcluded,
+    handleMasterToggle,
+    handleHolidayToggle,
+    handleSelectAll,
+    handleSelectNone,
+    handleSave,
+    handleCancel,
+    handleClearSearch,
+  } = useHolidaySelection({
+    holidays,
+    excludeHolidays,
+    excludedHolidayDates,
+    onSelectionChange,
+    onClose,
+  });
 
   return (
     <Dialog
@@ -302,14 +178,7 @@ export const HolidaySelectionDialog: React.FC<HolidaySelectionDialogProps> = ({
                           ({
                             holidaysOnDay: getHolidaysForDate(ownerState.day),
                             isExcluded: getHolidaysForDate(ownerState.day).some(
-                              (h) => {
-                                if (!localExcludeHolidays) return false;
-
-                                if (localExcludedDates.length === 0)
-                                  return true;
-
-                                return localExcludedDates.includes(h.date);
-                              }
+                              (h) => isHolidayExcluded(h)
                             ),
                           }) as any,
                       }}
@@ -428,11 +297,9 @@ export const HolidaySelectionDialog: React.FC<HolidaySelectionDialogProps> = ({
                         startIcon={<CheckBoxIcon />}
                         onClick={handleSelectAll}
                         disabled={
-                          filteredHolidays.length === 0 ||
+                          holidays.length === 0 ||
                           (localExcludeHolidays &&
-                            (localExcludedDates.length === 0 ||
-                              localExcludedDates.length ===
-                                filteredHolidays.length))
+                            excludedCount === holidays.length)
                         }
                       >
                         Excluir todos
