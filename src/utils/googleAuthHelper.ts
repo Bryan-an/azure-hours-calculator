@@ -16,10 +16,6 @@ export class GoogleAuthHelper {
     this.CLIENT_ID = clientId;
   }
 
-  static diagnoseGoogleAPI(): void {
-    // API status check without logging sensitive information
-  }
-
   static isElectron(): boolean {
     return electronUtils.isElectron();
   }
@@ -38,6 +34,7 @@ export class GoogleAuthHelper {
           }
         }
       }
+
       await new Promise((resolve) => setTimeout(resolve, 500));
     }
 
@@ -54,6 +51,7 @@ export class GoogleAuthHelper {
             'Google API library not loaded. Please check internet connection.'
           )
         );
+
         return;
       }
 
@@ -114,6 +112,7 @@ export class GoogleAuthHelper {
     try {
       // Wait for Google APIs to be available
       const isReady = await this.waitForGoogleAPI();
+
       if (!isReady) {
         throw new Error(
           'Google API libraries are not available. Please check your internet connection.'
@@ -194,18 +193,6 @@ export class GoogleAuthHelper {
     }
   }
 
-  static isSignedIn(): boolean {
-    // With GIS, we don't have a persistent sign-in state
-    // This would need to be managed by storing token info
-    return false;
-  }
-
-  static getCurrentAccessToken(): string | null {
-    // With GIS, tokens are managed differently
-    // This would need to be implemented based on token storage
-    return null;
-  }
-
   // Electron-specific OAuth flow using popup window
   static async signInElectron(): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -237,6 +224,7 @@ export class GoogleAuthHelper {
             'Popup bloqueado por el navegador. Habilita popups para este sitio.'
           )
         );
+
         return;
       }
 
@@ -301,9 +289,11 @@ export class GoogleAuthHelper {
         clearInterval(checkClosed);
         clearInterval(urlChecker);
         window.removeEventListener('message', messageListener);
+
         if (!popup.closed) {
           popup.close();
         }
+
         reject(new Error('Timeout de autenticación'));
       }, 300000);
     });
