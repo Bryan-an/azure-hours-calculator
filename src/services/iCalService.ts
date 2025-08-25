@@ -1,4 +1,5 @@
 import { Meeting } from '../types';
+import { electronUtils } from '../utils/electronUtils';
 
 export interface ICalConfig {
   url: string;
@@ -85,10 +86,7 @@ export class ICalService {
         error: error instanceof Error ? error.message : 'unknown',
         url: this.sanitizeUrl(this.url),
         usedProxy: this.needsCorsProxy(this.url),
-        isElectron:
-          !!(window as any).require ||
-          !!(window as any).electronAPI ||
-          navigator.userAgent.includes('Electron'),
+        isElectron: electronUtils.isElectron(),
       });
 
       // Error fetching iCal data - details logged securely
@@ -248,6 +246,7 @@ export class ICalService {
     ];
 
     const title = (event.summary || '').toLowerCase();
+
     if (optionalKeywords.some((keyword) => title.includes(keyword))) {
       return true;
     }
@@ -257,11 +256,7 @@ export class ICalService {
 
   private needsCorsProxy(url: string): boolean {
     // In Electron, we don't need CORS proxy since there are no CORS restrictions
-    const isElectron =
-      !!(window as any).require ||
-      !!(window as any).electronAPI ||
-      navigator.userAgent.includes('Electron');
-    if (isElectron) {
+    if (electronUtils.isElectron()) {
       return false;
     }
 
@@ -274,6 +269,7 @@ export class ICalService {
 
     try {
       const urlObj = new URL(url);
+
       return corsRestrictedDomains.some((domain) =>
         urlObj.host.includes(domain)
       );
@@ -307,14 +303,12 @@ export class ICalService {
     const existingLogs = JSON.parse(
       localStorage.getItem('calendar_audit_log') || '[]'
     );
+
     existingLogs.push(logEntry);
 
     // Keep only last 100 entries
     const recentLogs = existingLogs.slice(-100);
     localStorage.setItem('calendar_audit_log', JSON.stringify(recentLogs));
-
-    // Also log to console for development
-    // Security event logged to localStorage only
   }
 
   async testConnection(): Promise<boolean> {
@@ -343,6 +337,7 @@ export class ICalService {
       if (success && this.needsCorsProxy(this.url)) {
         try {
           const jsonResponse = await response.json();
+
           success =
             !!jsonResponse.contents &&
             jsonResponse.contents.includes('BEGIN:VCALENDAR');

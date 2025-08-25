@@ -2,7 +2,12 @@
 
 export const electronUtils = {
   isElectron: (): boolean => {
-    return !!(window as unknown as Record<string, unknown>).require;
+    // Multiple detection methods for Electron environment
+    return (
+      !!(window as any).require ||
+      !!(window as any).electronAPI ||
+      navigator.userAgent.includes('Electron')
+    );
   },
 
   getCurrentWindow: () => {
