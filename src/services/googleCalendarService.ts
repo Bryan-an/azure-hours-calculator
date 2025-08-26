@@ -1,21 +1,51 @@
 import axios from 'axios';
 import { Meeting } from '../types';
 
+/**
+ * Base URL for Google Calendar API v3
+ * @internal
+ */
 const GOOGLE_CALENDAR_API_BASE_URL = 'https://www.googleapis.com/calendar/v3';
 
+/**
+ * Configuration interface for Google Calendar authentication
+ *
+ * @public
+ */
 export interface GoogleAuthConfig {
+  /** OAuth2 access token for Google Calendar API */
   accessToken: string;
+  /** Calendar ID to access (defaults to 'primary' if not provided) */
   calendarId?: string;
+  /** OAuth2 refresh token for token renewal */
   refreshToken?: string;
+  /** Token expiration timestamp in milliseconds */
   expiresAt?: number;
 }
 
+/**
+ * Service class for integrating with Google Calendar API
+ *
+ * Provides methods to authenticate, fetch events, and manage calendar data
+ * with built-in security logging and token management.
+ *
+ * @public
+ */
 export class GoogleCalendarService {
+  /** OAuth2 access token for API authentication */
   private accessToken: string;
+  /** Google Calendar ID to access */
   private calendarId: string;
+  /** OAuth2 refresh token for token renewal */
   private refreshToken?: string;
+  /** Token expiration timestamp in milliseconds */
   private expiresAt?: number;
 
+  /**
+   * Creates a new GoogleCalendarService instance
+   *
+   * @param config - Authentication configuration
+   */
   constructor(config: GoogleAuthConfig) {
     this.accessToken = config.accessToken;
     this.calendarId = config.calendarId || 'primary';
@@ -23,6 +53,14 @@ export class GoogleCalendarService {
     this.expiresAt = config.expiresAt;
   }
 
+  /**
+   * Ensures the access token is valid and refreshes it if necessary
+   *
+   * Checks if the current token is expired (with 5-minute buffer) and
+   * attempts to refresh it if needed.
+   *
+   * @throws Error When token refresh is required but refresh token is missing
+   */
   private async ensureValidToken(): Promise<void> {
     if (!this.expiresAt) return;
 
@@ -34,6 +72,14 @@ export class GoogleCalendarService {
     }
   }
 
+  /**
+   * Refreshes the OAuth2 access token using the refresh token
+   *
+   * Note: This implementation is designed for security - it clears expired tokens
+   * and requires fresh authentication instead of automatic refresh.
+   *
+   * @throws Error When refresh token is missing or refresh process fails
+   */
   private async refreshAccessToken(): Promise<void> {
     if (!this.refreshToken) {
       this.logSecurityEvent('token_refresh_no_refresh_token', {
@@ -71,6 +117,15 @@ export class GoogleCalendarService {
     }
   }
 
+  /**
+   * Logs security-related events for audit purposes
+   *
+   * Events are stored in localStorage with sensitive information filtered out.
+   * Maintains a rolling log of the last 50 entries.
+   *
+   * @param event - Event type identifier
+   * @param details - Event details (sensitive data will be filtered)
+   */
   private logSecurityEvent(
     event: string,
     details: Record<string, unknown>
@@ -103,6 +158,19 @@ export class GoogleCalendarService {
     );
   }
 
+  /**
+   * Retrieves calendar events within the specified date range
+   *
+   * Fetches events from Google Calendar, filters out all-day events,
+   * and determines if events are optional based on attendance status.
+   *
+   * @param startDate - Start date for event retrieval
+   * @param endDate - End date for event retrieval
+   * @returns Promise resolving to an array of Meeting objects
+   * @throws Error When token is expired or invalid
+   *
+   * @public
+   */
   async getEvents(startDate: Date, endDate: Date): Promise<Meeting[]> {
     if (!this.accessToken) {
       this.logSecurityEvent('access_attempt_no_token', {});
@@ -193,6 +261,15 @@ export class GoogleCalendarService {
     }
   }
 
+  /**
+   * Determines if a calendar event is optional based on various criteria
+   *
+   * Checks the current user's response status, event transparency,
+   * and event status to determine if the event should be considered optional.
+   *
+   * @param event - Raw event object from Google Calendar API
+   * @returns True if the event is optional, false if mandatory
+   */
   private determineIfEventIsOptional(event: Record<string, unknown>): boolean {
     // Check if the current user has declined the event
     const attendees = (event.attendees as Array<Record<string, unknown>>) || [];
@@ -222,6 +299,16 @@ export class GoogleCalendarService {
     return false;
   }
 
+  /**
+   * Tests the connection to Google Calendar API
+   *
+   * Attempts to fetch calendar information to verify that the
+   * access token is valid and the calendar is accessible.
+   *
+   * @returns Promise resolving to true if connection is successful, false otherwise
+   *
+   * @public
+   */
   async testConnection(): Promise<boolean> {
     if (!this.accessToken) {
       return false;
@@ -244,6 +331,16 @@ export class GoogleCalendarService {
     }
   }
 
+  /**
+   * Retrieves the list of available calendars for the authenticated user
+   *
+   * Fetches all calendars that the user has access to, including
+   * their primary calendar and any shared calendars.
+   *
+   * @returns Promise resolving to array of calendar objects containing id and summary properties
+   *
+   * @public
+   */
   async getCalendarList(): Promise<Array<{ id: string; summary: string }>> {
     if (!this.accessToken) {
       return [];
