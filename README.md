@@ -5,187 +5,398 @@
 [![Electron](https://img.shields.io/badge/Electron-29.3-green)](https://www.electronjs.org/)
 [![React](https://img.shields.io/badge/React-18.2-blue)](https://reactjs.org/)
 
-Una aplicación de escritorio profesional para calcular fechas de inicio y fin de tareas en Azure DevOps, considerando horarios laborales, feriados ecuatorianos y eventos de Google Calendar.
+Una aplicación de escritorio profesional para macOS que automatiza el cálculo de fechas de finalización de tareas en Azure DevOps, considerando horarios laborales configurables, feriados ecuatorianos y eventos de Google Calendar con selección granular.
 
 ## ✨ Características Principales
 
-- **🧮 Cálculo automático de fechas**: Calcula la fecha de fin basada en horas estimadas y fecha de inicio
-- **⏰ Horario laboral configurable**: 8:30 AM - 5:30 PM por defecto, con hora de almuerzo personalizable
-- **🇪🇨 Feriados ecuatorianos**: Detección automática de feriados nacionales de Ecuador (2025)
-- **📅 Integración con Google Calendar**: Sincronización con tu calendario de Google para excluir reuniones y eventos
-- **🎨 Interfaz profesional**: Modo oscuro diseñado específicamente para desarrolladores
-- **🖥️ Aplicación nativa**: Construida con Electron para macOS (ARM64 y x64)
-- **⚡ Hot reload**: Desarrollo rápido con recarga automática
-- **🔒 Seguridad**: Manejo seguro de tokens y configuraciones
+### 🧮 Cálculo Inteligente de Fechas
 
-## Instalación
+- **Cálculo automático preciso**: Algoritmo avanzado que considera horarios laborales, almuerzos y exclusiones
+- **Selección granular de feriados**: Control individual sobre qué feriados ecuatorianos excluir del cálculo
+- **Selección granular de eventos**: Elegir específicamente qué reuniones y eventos de calendario excluir
+- **Resultados detallados**: Información completa sobre días laborales, horas efectivas y exclusiones
 
-1. Clona el repositorio:
+### 🎨 Interfaz Profesional y Moderna
+
+- **Aplicación nativa frameless**: Ventana personalizada con controles de tráfico de macOS
+- **Modo oscuro profesional**: Tema diseñado específicamente para desarrolladores
+- **Componentes optimizados**: Interfaz rápida con memoización y React.memo
+- **Notificaciones elegantes**: Sistema toast profesional para feedback del usuario
+- **Clipboard integration**: Copia rápida de fechas calculadas
+
+### 🔗 Integraciones Poderosas
+
+- **Google Calendar completo**: OAuth 2.0, selección de calendario, exclusión granular de eventos
+- **Feriados ecuatorianos actualizados**: API Calendarific + fallback a lista completa 2025
+- **Configuración flexible**: Horarios laborales totalmente personalizables
+
+### 🛠️ Desarrollo y Calidad
+
+- **TypeScript estricto**: Tipado completo con verificaciones automáticas
+- **Calidad de código automatizada**: ESLint, Prettier, Husky git hooks
+- **Arquitectura modular**: Hooks personalizados y componentes reutilizables
+- **Build multiplataforma**: Soporte ARM64 y x64 para macOS
+
+## 🚀 Instalación Rápida
+
+### Prerequisitos
+
+- **macOS**: 10.14+ (Apple Silicon y Intel soportados)
+- **Node.js**: 16+ (recomendado 18+)
+- **npm**: 7+ (recomendado 9+)
+
+### Instalación
 
 ```bash
+# 1. Clonar repositorio
 git clone https://github.com/Bryan-an/azure-hours-calculator.git
 cd azure-hours-calculator
-```
 
-2. Instala las dependencias:
-
-```bash
+# 2. Instalar dependencias y configurar calidad de código
 npm install --legacy-peer-deps
+npm run prepare  # Configura git hooks automáticamente
+
+# 3. Verificar instalación
+npm run typecheck && npm run lint && npm run build
+
+# 4. Ejecutar aplicación
+npm run electron-dev  # Aplicación nativa con hot reload
 ```
 
-3. Para desarrollo:
+### Construir para Distribución
 
 ```bash
-npm run electron-dev
-```
-
-4. Para construir la aplicación:
-
-```bash
+# Generar DMG y ZIP para macOS
 npm run build-electron
 ```
 
-## Configuración
+Los archivos estarán en `dist/`:
 
-### Horario Laboral
+- `Azure Hours Calculator-1.0.0.dmg` (Instalador)
+- `Azure Hours Calculator-1.0.0-mac.zip` (Aplicación portable)
 
-- **Hora de inicio**: 8:30 AM (configurable)
-- **Hora de fin**: 5:30 PM (configurable)
-- **Almuerzo**: 1:00 PM - 2:00 PM (configurable)
-- **Días laborales**: Lunes a Viernes (configurable)
+> 📝 **Instalación detallada**: Ver [INSTALL.md](INSTALL.md) para guía completa
 
-### Integraciones
+## ⚙️ Configuración
 
-#### Google Calendar (Opcional)
+### 🕰️ Horario Laboral (Totalmente Personalizable)
 
-Para integrar con tu calendario de Google:
+```
+Defecto Ecuador: 8:30 AM - 5:30 PM
+Almuerzo: 1:00 PM - 2:00 PM
+Días laborales: Lunes a Viernes
+```
 
-1. Ve a [Google Cloud Console](https://console.cloud.google.com/)
-2. Crea un nuevo proyecto o selecciona uno existente
-3. Habilita la API de Google Calendar
-4. Crea credenciales OAuth 2.0 para aplicación de escritorio
-5. Obtén tu Client ID
-6. Configúralo en la aplicación y autoriza el acceso
+Todos los horarios son configurables desde la interfaz.
 
-#### Calendarific (Opcional)
+### 🔗 Integraciones Disponibles
 
-Para obtener feriados actualizados de Ecuador:
+#### 📅 Google Calendar (Recomendado)
 
-1. Regístrate en [Calendarific](https://calendarific.com/)
-2. Obtén tu API key gratuita
-3. Configúrala en la aplicación
+**Setup rápido**:
 
-## Uso
+1. [Google Cloud Console](https://console.cloud.google.com/) → Nuevo proyecto
+2. Habilitar "Google Calendar API"
+3. Credenciales → OAuth 2.0 → **Aplicación de escritorio**
+4. Copiar Client ID → Pegar en la app → "Conectar"
 
-1. **Configura tu horario**: Ve a Configuración para ajustar tu horario laboral
-2. **Ingresa las horas estimadas**: Número decimal de horas (ej: 8.5)
-3. **Selecciona fecha de inicio**: Fecha y hora de inicio de la tarea
-4. **Habilita exclusiones**:
-   - Feriados ecuatorianos automáticos
-   - Eventos de Google Calendar (si está configurado)
-   - Selección granular de feriados específicos
-5. **Calcula**: Obtén la fecha estimada de finalización
+**Funcionalidades**:
 
-## Arquitectura
+- ✅ Exclusión automática de reuniones del cálculo
+- ✅ Selección granular evento por evento
+- ✅ Soporte múltiples calendarios
+- ✅ Sincronización en tiempo real
 
-- **Frontend**: React + TypeScript + Material-UI
-- **Desktop**: Electron
-- **APIs**:
-  - Calendarific (feriados actualizados)
-  - Google Calendar API (eventos y reuniones)
-  - Fallback a feriados estáticos Ecuador 2025
-- **Almacenamiento**: LocalStorage
+#### 🇪🇨 Feriados Ecuatorianos
 
-## 🚀 Scripts Disponibles
+**Opción 1: Calendarific API** (feriados actualizados)
 
-### Desarrollo
+- Cuenta gratuita en [Calendarific](https://calendarific.com/)
+- 1000 requests/mes gratis
+- Actualizaciones automáticas
 
-- `npm start`: Inicia el servidor de desarrollo web
-- `npm run electron-dev`: Desarrollo Electron con hot reload
-- `npm run typecheck`: Verificar tipos de TypeScript
-- `npm run lint`: Ejecutar ESLint
-- `npm run lint:fix`: Corregir errores de ESLint automáticamente
-- `npm run format`: Formatear código con Prettier
+**Opción 2: Lista integrada** (predeterminado)
 
-### Producción
+- Feriados nacionales 2025 incluidos
+- Carnaval y Semana Santa calculados
+- No requiere configuración
 
-- `npm run build`: Construye la aplicación web para producción
-- `npm run build-electron`: Construye la aplicación de escritorio (DMG + ZIP)
-- `npm run electron`: Ejecuta la aplicación Electron construida
+**Ambas opciones soportan selección granular de feriados individuales**
 
-### Calidad de Código
+## 🚀 Cómo Usar
 
-- **ESLint**: Configurado con reglas de TypeScript y React
-- **Prettier**: Formateo automático de código
-- **Husky**: Git hooks para calidad de código
-  - Pre-commit: lint + format archivos modificados
-  - Pre-push: typecheck + build completo
+### Flujo Completo
 
-## Estructura del Proyecto
+1. **⚙️ Configuración inicial**
+   - Ajusta horario laboral (8:30-17:30 por defecto)
+   - Conecta Google Calendar (opcional)
+   - Configura API Calendarific (opcional)
+
+2. **📝 Ingreso de datos**
+   - **Horas estimadas**: Decimal (ej: 8.5 = 8h 30min)
+   - **Fecha/hora inicio**: Date picker preciso
+   - **Exclusiones globales**: Toggles para feriados y eventos
+
+3. **🎯 Ajustes granulares** (nuevo)
+   - **"Seleccionar feriados"**: Elige feriados específicos individualmente
+   - **"Seleccionar eventos"**: Elige reuniones específicas a excluir
+   - **Vista previa**: Ve cómo afectan las exclusiones
+
+4. **🧮 Cálculo y resultados**
+   - Fecha estimada de finalización
+   - Días laborales utilizados
+   - Horas efectivas de trabajo
+   - Lista detallada de exclusiones
+   - **Botón copiar**: Fecha lista para pegar
+
+### Funciones Avanzadas
+
+- **📋 Clipboard integration**: Copia fechas con un clic
+- **🔔 Notificaciones toast**: Feedback elegante y profesional
+- **💾 Auto-save**: Configuraciones guardadas automáticamente
+- **⚡ Optimizada**: Interfaz rápida con memoización
+
+## 🏗️ Arquitectura
+
+### Stack Tecnológico
+
+```
+🖥️ Desktop: Electron 29.3+ (frameless, titleBarOverlay)
+⚔️ Frontend: React 18 + TypeScript 4.9
+🎨 UI: Material-UI 5.15 + Emotion
+📅 Dates: date-fns 2.30
+💾 State: Zustand 5.0 (lightweight)
+🔔 Toast: react-hot-toast 2.6
+```
+
+### Arquitectura de Componentes
+
+```
+App.tsx
+├── ElectronTitleBar (frameless window controls)
+├── TaskCalculator (main interface)
+│   ├── DatePickers (start date/time)
+│   ├── HolidaySelectionDialog (granular holidays)
+│   └── EventSelectionDialog (granular events)
+├── SettingsDialog (configuration)
+└── Toast Notifications (feedback)
+```
+
+### Sistema de Hooks Modular
+
+```
+🎯 useTaskCalculation (main calculation logic)
+🇪🇨 useHolidays + useHolidaySelection (Ecuador holidays)
+📅 useCalendarEvents + useEventSelection (Google Calendar)
+⚙️ useGoogleAuth (OAuth 2.0 flow)
+📋 useClipboard (copy functionality)
+💾 useTaskForm (form state management)
+```
+
+### Integraciones Externas
+
+- **Google Calendar API**: OAuth 2.0, read-only access
+- **Calendarific API**: Ecuador holidays, 1000 req/month free
+- **LocalStorage**: Settings, preferences, tokens
+- **Clipboard API**: Quick date copying
+
+## 🚀 Scripts y Comandos
+
+### 🗺️ Desarrollo
+
+| Comando                | Descripción                       |
+| ---------------------- | --------------------------------- |
+| `npm run electron-dev` | 🖥️ Aplicación nativa + hot reload |
+| `npm start`            | 🌍 Servidor web desarrollo        |
+| `npm run typecheck`    | ✔️ Verificar tipos TypeScript     |
+| `npm run lint`         | 🔍 Análisis de código ESLint      |
+| `npm run lint:fix`     | 🩹 Auto-fix errores ESLint        |
+| `npm run format`       | 🎨 Formatear con Prettier         |
+
+### 📦 Producción y Build
+
+| Comando                  | Resultado                   |
+| ------------------------ | --------------------------- |
+| `npm run build`          | 🌍 Build web optimizado     |
+| `npm run build-electron` | 💿 **DMG + ZIP para macOS** |
+| `npm run electron`       | 🚀 Ejecutar app construida  |
+
+### ⚙️ Utilidades
+
+| Comando                | Uso                              |
+| ---------------------- | -------------------------------- |
+| `npm run prepare`      | 🤝 Setup Husky git hooks         |
+| `npm run format:check` | 🕵️ Verificar formato sin cambios |
+
+### 🏆 Calidad de Código Automatizada
+
+**Git Hooks configurados automáticamente:**
+
+- **Pre-commit**: 🎯 ESLint + Prettier en archivos staged
+- **Pre-push**: ✅ TypeCheck + Build verification
+
+**Herramientas integradas:**
+
+- **ESLint**: Reglas TypeScript + React + React Hooks
+- **Prettier**: Formato consistente automático
+- **TypeScript**: Verificación estática estricta
+- **lint-staged**: Solo archivos modificados
+
+## 🗺️ Estructura del Proyecto
+
+### 🏢 Arquitectura Principal
 
 ```
 azure-hours-calculator/
-├── public/
-│   ├── electron.js           # Proceso principal de Electron
-│   ├── oauth-callback.html   # Callback para Google OAuth
-│   └── manifest.json         # PWA manifest
-├── src/
-│   ├── components/
-│   │   ├── ElectronTitleBar.tsx    # Barra de título personalizada
-│   │   ├── SettingsDialog.tsx      # Configuración de la app
-│   │   └── TaskCalculator.tsx      # Calculadora principal
-│   ├── services/
-│   │   ├── googleCalendarService.ts # Google Calendar API
-│   │   └── holidayService.ts        # API de feriados
-│   ├── utils/
-│   │   ├── dateCalculations.ts      # Lógica de cálculo de fechas
-│   │   ├── electronUtils.ts         # Utilidades para Electron
-│   │   └── storage.ts               # Manejo de localStorage
-│   ├── types/
-│   │   └── index.ts                 # Definiciones TypeScript
-│   └── App.tsx                      # Componente principal
-├── assets/                          # Iconos y recursos persistentes
-├── .husky/                          # Git hooks
-├── eslint.config.mjs               # Configuración ESLint
-├── CLAUDE.md                       # Documentación técnica detallada
-└── LICENSE                         # MIT License
+├── 💰 assets/                     # Iconos para construcción
+│   ├── icon.icns (macOS)
+│   └── icon-1024.png
+├── 🌍 public/
+│   ├── electron.js              # ⚡ Proceso principal Electron
+│   ├── oauth-callback.html      # 🔐 OAuth Google callback
+│   └── manifest.json            # PWA manifest
+├── 🧩 src/
+│   ├── 🧩 components/
+│   │   ├── ElectronTitleBar.tsx       # 🖥️ Frameless window controls
+│   │   ├── TaskCalculator.tsx         # 🧮 Calculadora principal
+│   │   ├── SettingsDialog.tsx         # ⚙️ Configuración completa
+│   │   ├── HolidaySelectionDialog.tsx # 🇪🇨 Selección granular feriados
+│   │   ├── EventSelectionDialog.tsx   # 📅 Selección granular eventos
+│   │   └── HolidayDay.tsx             # 🎆 Componente visual feriado
+│   ├── ⚙️ hooks/                     # Sistema modular de hooks
+│   │   ├── useTaskCalculation.ts      # 🧮 Lógica principal
+│   │   ├── useHolidaySelection.ts     # 🇪🇨 Gestión granular feriados
+│   │   ├── useEventSelection.ts       # 📅 Gestión granular eventos
+│   │   ├── useGoogleAuth.ts           # 🔐 OAuth 2.0 flow
+│   │   ├── useClipboard.ts            # 📋 Copy functionality
+│   │   └── [...6 hooks más]           # Ver CLAUDE.md
+│   ├── 🔗 services/
+│   │   ├── googleCalendarService.ts   # 📅 Google Calendar API
+│   │   ├── holidayService.ts          # 🇪🇨 Ecuador holidays API
+│   │   └── iCalService.ts             # 📅 iCal integration
+│   ├── 💾 stores/
+│   │   ├── settingsStore.ts           # ⚙️ App settings (Zustand)
+│   │   ├── uiStore.ts                 # 🎨 UI state
+│   │   └── preferencesStore.ts        # 📁 User preferences
+│   ├── 🛠️ utils/
+│   │   ├── dateCalculations.ts        # 🧮 Core calculation logic
+│   │   ├── electronUtils.ts           # ⚡ Electron helpers
+│   │   └── googleAuthHelper.ts        # 🔐 OAuth helpers
+│   └── 📝 types/index.ts             # ⚔️ TypeScript definitions
+├── 🤝 .husky/                     # Git hooks automation
+├── 📄 Documentation
+│   ├── README.md                   # 📚 Overview general
+│   ├── INSTALL.md                  # 🚀 Guía instalación
+│   └── CLAUDE.md                   # 🤖 Documentación técnica completa
+└── ⚙️ Config files
+    ├── package.json                # Dependencies & scripts
+    ├── tsconfig.json              # TypeScript config
+    ├── eslint.config.mjs          # ESLint rules
+    └── LICENSE                     # MIT License
 ```
+
+### 🏆 Características de la Arquitectura
+
+- **🧩 Componentes modulares**: Separación clara de responsabilidades
+- **⚙️ Hooks especializados**: Lógica reutilizable y testeable
+- **💾 Estado global optimizado**: Zustand para performance
+- **🔐 Integraciones seguras**: OAuth 2.0 y manejo seguro de tokens
+- **🏆 Calidad garantizada**: Git hooks, ESLint, Prettier, TypeScript
 
 ## 🤝 Contribuir
 
-Las contribuciones son bienvenidas. Para contribuir:
+¡Las contribuciones son bienvenidas! Este proyecto mantiene altos estándares de calidad.
 
-1. Fork el proyecto
-2. Crea una rama feature (`git checkout -b feature/AmazingFeature`)
-3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
-4. Push a la rama (`git push origin feature/AmazingFeature`)
-5. Abre un Pull Request
+### 🚀 Proceso de Contribución
 
-### Calidad de Código
+```bash
+# 1. Fork y clonar
+git clone https://github.com/tu-usuario/azure-hours-calculator.git
+cd azure-hours-calculator
 
-Este proyecto mantiene altos estándares de calidad:
+# 2. Instalar y configurar
+npm install --legacy-peer-deps
+npm run prepare  # Git hooks automáticos
 
-- **ESLint**: Análisis estático de código
-- **Prettier**: Formateo consistente
-- **TypeScript**: Tipado estricto
-- **Git Hooks**: Verificaciones automáticas en commits
-- **Tests**: Typecheck obligatorio antes de push
+# 3. Crear rama feature
+git checkout -b feature/amazing-feature
 
-Los git hooks se ejecutan automáticamente para mantener la calidad del código.
+# 4. Desarrollar con calidad automática
+# Los git hooks validarán tu código en cada commit
 
-## 📄 Licencia
+# 5. Push y PR
+git push origin feature/amazing-feature
+```
+
+### 🏆 Estándares de Calidad Automatizados
+
+**⚙️ Pre-commit (automático)**:
+
+- ✔️ ESLint: Análisis de código
+- ✔️ Prettier: Formato consistente
+- ✔️ TypeScript: Verificación de tipos
+
+**🚀 Pre-push (automático)**:
+
+- ✔️ Build: Compilación exitosa
+- ✔️ Type check: Tipado completo
+
+### 📝 Guías para Contribuir
+
+- **🧩 Componentes**: Usar React.memo para optimización
+- **⚙️ Hooks**: Un hook por responsabilidad específica
+- **🔐 APIs**: Manejo seguro de tokens y credenciales
+- **🎨 UI**: Seguir el tema Material-UI oscuro
+- **📝 Docs**: Actualizar CLAUDE.md para cambios arquitecturales
+
+### 🐛 Reportar Issues
+
+Incluir siempre:
+
+- Versión de Node.js y npm
+- Sistema operativo y versión
+- Pasos para reproducir
+- Logs de error completos
+
+## 📝 Documentación Completa
+
+| Archivo                  | Propósito                         |
+| ------------------------ | --------------------------------- |
+| [README.md](README.md)   | 📚 Overview y guía rápida         |
+| [INSTALL.md](INSTALL.md) | 🚀 Instalación paso a paso        |
+| [CLAUDE.md](CLAUDE.md)   | 🤖 Documentación técnica completa |
+| [LICENSE](LICENSE)       | ⚖️ MIT License                    |
+
+## 📚 Licencia
 
 Distribuido bajo la **MIT License**. Ver [LICENSE](LICENSE) para más información.
 
 ## 🙋‍♂️ Autor
 
-**Bryan Andagoya** - Desarrollador en Ecuador 🇪🇨
+**Bryan Andagoya** - Desarrollador Full Stack en Ecuador 🇪🇨
 
-- GitHub: [@Bryan-an](https://github.com/Bryan-an)
-- Proyecto: [azure-hours-calculator](https://github.com/Bryan-an/azure-hours-calculator)
+- 🐙 GitHub: [@Bryan-an](https://github.com/Bryan-an)
+- 📧 Email: bryanandagoya@gmail.com
+- 💼 LinkedIn: Desarrollador especializado en React, TypeScript y Electron
 
 ---
 
-⭐ Si te resulta útil este proyecto, ¡no olvides darle una estrella!
+## ⭐ ¡Dale una Estrella!
 
-🤖 Desarrollado con la asistencia de [Claude Code](https://claude.ai/code)
+Si **Azure Hours Calculator** te resulta útil para tu trabajo con Azure DevOps, ¡no olvides darle una estrella en GitHub!
+
+## 🤖 Desarrollado con IA
+
+Este proyecto fue desarrollado con la asistencia de [Claude Code](https://claude.ai/code), demonstrando el potencial de la colaboración humano-IA en el desarrollo de software profesional.
+
+### 🏆 Logros del Proyecto
+
+- ✅ Aplicación nativa completamente funcional
+- ✅ Integraciones complejas (Google Calendar, APIs)
+- ✅ Arquitectura escalable y mantenible
+- ✅ Código de calidad profesional
+- ✅ Documentación completa y detallada
+
+---
+
+📊 **Estado del Proyecto**: 🟢 Activo y Funcional | **Versión**: 1.0.0 | **Última actualización**: Agosto 2025
