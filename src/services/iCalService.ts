@@ -181,7 +181,7 @@ export class ICalService {
       const month = parseInt(cleanDate.substring(4, 6)) - 1; // Month is 0-based
       const day = parseInt(cleanDate.substring(6, 8));
       return new Date(year, month, day);
-    } else if (cleanDate.length === 15 && cleanDate.endsWith('Z')) {
+    } else if (cleanDate.length === 16 && cleanDate.endsWith('Z')) {
       // UTC format: YYYYMMDDTHHMMSSZ
       const year = parseInt(cleanDate.substring(0, 4));
       const month = parseInt(cleanDate.substring(4, 6)) - 1;
@@ -203,14 +203,27 @@ export class ICalService {
 
     // Fallback to ISO parsing
     try {
-      return new Date(cleanDate);
+      const date = new Date(cleanDate);
+
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        return new Date();
+      }
+
+      return date;
     } catch {
       return new Date();
     }
   }
 
   private isValidEvent(event: Partial<ICalEvent>): event is ICalEvent {
-    return !!(event.uid && event.dtstart && event.dtend);
+    return !!(
+      event.uid &&
+      event.dtstart &&
+      event.dtend &&
+      !isNaN(event.dtstart.getTime()) &&
+      !isNaN(event.dtend.getTime())
+    );
   }
 
   private mapICalEventToMeeting(event: ICalEvent): Meeting {
