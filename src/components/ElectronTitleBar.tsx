@@ -15,6 +15,7 @@ export const ElectronTitleBar: React.FC<ElectronTitleBarProps> = ({
 }) => {
   const handleClose = () => {
     const currentWindow = electronUtils.getCurrentWindow();
+
     if (currentWindow && typeof currentWindow.close === 'function') {
       currentWindow.close();
     }
@@ -22,6 +23,7 @@ export const ElectronTitleBar: React.FC<ElectronTitleBarProps> = ({
 
   const handleMinimize = () => {
     const currentWindow = electronUtils.getCurrentWindow();
+
     if (currentWindow && typeof currentWindow.minimize === 'function') {
       currentWindow.minimize();
     }
@@ -69,6 +71,7 @@ export const ElectronTitleBar: React.FC<ElectronTitleBarProps> = ({
           >
             <MinimizeIcon fontSize="small" />
           </IconButton>
+
           <IconButton
             size="small"
             onClick={handleMaximize}
@@ -80,6 +83,7 @@ export const ElectronTitleBar: React.FC<ElectronTitleBarProps> = ({
           >
             <CropSquareIcon fontSize="small" />
           </IconButton>
+
           <IconButton
             size="small"
             onClick={handleClose}
