@@ -2,6 +2,7 @@ import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import reactPlugin from 'eslint-plugin-react';
 import reactHooksPlugin from 'eslint-plugin-react-hooks';
+import tsdocPlugin from 'eslint-plugin-tsdoc';
 import prettierConfig from 'eslint-config-prettier';
 import prettierPlugin from 'eslint-plugin-prettier';
 
@@ -14,8 +15,16 @@ export default tseslint.config(
       'build/**/*',
       'dist/**',
       'dist/**/*',
+      'coverage/**',
+      'docs/**',
       'public/electron.js',
       'node_modules/**',
+      '**/*.min.js',
+      '**/*.map',
+      '*.config.*',
+      'vite.config.*',
+      'vitest.config.*',
+      'typedoc.json',
     ],
   },
   {
@@ -23,6 +32,7 @@ export default tseslint.config(
     plugins: {
       react: reactPlugin,
       'react-hooks': reactHooksPlugin,
+      '@typescript-eslint/tsdoc': tsdocPlugin,
       prettier: prettierPlugin,
     },
     languageOptions: {
@@ -63,6 +73,7 @@ export default tseslint.config(
       '@typescript-eslint/explicit-function-return-type': 'off',
       '@typescript-eslint/explicit-module-boundary-types': 'off',
       '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/tsdoc/syntax': 'warn',
     },
     settings: {
       react: {

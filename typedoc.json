@@ -1,0 +1,60 @@
+{
+  "entryPoints": [
+    "src/utils/dateCalculations.ts",
+    "src/utils/electronUtils.ts",
+    "src/utils/googleAuthHelper.ts",
+    "src/services/googleCalendarService.ts",
+    "src/services/holidayService.ts",
+    "src/services/iCalService.ts",
+    "src/hooks",
+    "src/stores",
+    "src/components/TaskCalculator.tsx",
+    "src/types/index.ts"
+  ],
+  "out": "docs",
+  "name": "Azure Hours Calculator - API Documentation",
+  "readme": "README.md",
+  "includeVersion": true,
+  "excludePrivate": true,
+  "excludeProtected": true,
+  "excludeInternal": true,
+  "exclude": [
+    "**/__tests__/**/*",
+    "**/*.test.*",
+    "**/node_modules/**/*",
+    "build/**/*",
+    "dist/**/*",
+    "public/**/*"
+  ],
+  "theme": "default",
+  "hideGenerator": false,
+  "sort": ["source-order"],
+  "kindSortOrder": [
+    "Project",
+    "Module",
+    "Namespace",
+    "Enum",
+    "Interface",
+    "Class",
+    "Function",
+    "Variable",
+    "TypeAlias",
+    "Property",
+    "Method",
+    "Parameter",
+    "CallSignature"
+  ],
+  "categorizeByGroup": true,
+  "categoryOrder": [
+    "Utilities",
+    "Services",
+    "Components",
+    "Hooks",
+    "Types",
+    "Stores",
+    "*"
+  ],
+  "plugin": [],
+  "githubPages": true,
+  "gitRemote": "origin"
+}

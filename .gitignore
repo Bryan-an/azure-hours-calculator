@@ -10,6 +10,12 @@
 /build
 /dist
 
+# Documentation
+/docs
+
+# ESLint cache
+node_modules/.cache/
+
 # Environment variables
 .env
 .env.local
