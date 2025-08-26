@@ -16,9 +16,14 @@ export const useCalendarConnection = () => {
     }
 
     setIcalConnectionStatus('testing');
-    const icalService = new ICalService({ url: icalUrl });
-    const isConnected = await icalService.testConnection();
-    setIcalConnectionStatus(isConnected ? 'success' : 'error');
+
+    try {
+      const icalService = new ICalService({ url: icalUrl });
+      const isConnected = await icalService.testConnection();
+      setIcalConnectionStatus(isConnected ? 'success' : 'error');
+    } catch {
+      setIcalConnectionStatus('error');
+    }
   }, [icalUrl]);
 
   const resetICalConnection = useCallback(() => {
