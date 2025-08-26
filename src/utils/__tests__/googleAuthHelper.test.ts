@@ -83,6 +83,7 @@ describe('GoogleAuthHelper', () => {
       vi.mocked(electronUtilsModule.electronUtils.isElectron).mockReturnValue(
         true
       );
+
       (global.window as any).gapi = { load: vi.fn() };
 
       const result = await GoogleAuthHelper.waitForGoogleAPI(100);
@@ -137,6 +138,7 @@ describe('GoogleAuthHelper', () => {
       await expect(GoogleAuthHelper.initializeGapi()).resolves.toBeUndefined();
 
       expect(mockGapi.load).toHaveBeenCalledWith('client', expect.any(Object));
+
       expect(mockGapi.client.init).toHaveBeenCalledWith({
         discoveryDocs: [
           'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest',
@@ -178,6 +180,7 @@ describe('GoogleAuthHelper', () => {
         scope: 'https://www.googleapis.com/auth/calendar.readonly',
         callback: '',
       });
+
       expect((GoogleAuthHelper as any).tokenClient).toBe(mockTokenClient);
     });
 
@@ -222,8 +225,10 @@ describe('GoogleAuthHelper', () => {
       vi.mocked(electronUtilsModule.electronUtils.isElectron).mockReturnValue(
         true
       );
+
       vi.spyOn(GoogleAuthHelper, 'waitForGoogleAPI').mockResolvedValue(true);
       vi.spyOn(GoogleAuthHelper, 'initializeGapi').mockResolvedValue();
+
       const signInElectronSpy = vi
         .spyOn(GoogleAuthHelper, 'signInElectron')
         .mockResolvedValue('electron-token');
@@ -282,6 +287,7 @@ describe('GoogleAuthHelper', () => {
 
     it('should call revoke when Google APIs are available', async () => {
       const revokeSpy = vi.fn();
+
       (global.window as any).google = {
         accounts: {
           oauth2: {
@@ -333,12 +339,15 @@ describe('GoogleAuthHelper', () => {
 
       const authUrl = mockOpen.mock.calls[0][0];
       expect(authUrl).toContain('client_id=test-client-id');
+
       expect(authUrl).toContain(
         'redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Foauth-callback.html'
       );
+
       expect(authUrl).toContain(
         'scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcalendar.readonly'
       );
+
       expect(authUrl).toContain('response_type=token');
 
       vi.unstubAllGlobals();
