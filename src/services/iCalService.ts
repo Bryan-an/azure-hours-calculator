@@ -1,27 +1,93 @@
 import { Meeting } from '../types';
 import { electronUtils } from '../utils/electronUtils';
 
+/**
+ * Configuration interface for iCal service connection.
+ */
 export interface ICalConfig {
+  /** The iCal URL to fetch calendar events from */
   url: string;
 }
 
+/**
+ * Represents an iCal event with parsed properties.
+ */
 interface ICalEvent {
+  /** Unique identifier for the event */
   uid: string;
+  /** Event title/summary */
   summary: string;
+  /** Event start date and time */
   dtstart: Date;
+  /** Event end date and time */
   dtend: Date;
+  /** Event status (e.g., CONFIRMED, CANCELLED) */
   status: string;
+  /** Event transparency (OPAQUE or TRANSPARENT) */
   transparency: string;
+  /** Event description or notes */
   description: string;
 }
 
+/**
+ * Service for fetching and parsing iCal calendar data from various calendar providers.
+ *
+ * This service handles:
+ * - Fetching iCal data from URLs with CORS proxy support
+ * - Parsing iCal format into structured events
+ * - Converting events to Meeting objects
+ * - Connection testing and validation
+ * - Security logging and audit trails
+ *
+ * @example
+ * ```typescript
+ * const icalService = new ICalService({
+ *   url: 'https://calendar.google.com/calendar/ical/user@gmail.com/public/basic.ics'
+ * });
+ *
+ * const meetings = await icalService.getEvents(
+ *   new Date('2024-01-01'),
+ *   new Date('2024-01-31')
+ * );
+ * ```
+ */
 export class ICalService {
+  /** The iCal URL configured for this service instance */
   private url: string;
 
+  /**
+   * Creates a new ICalService instance.
+   *
+   * @param config - Configuration object containing the iCal URL
+   */
   constructor(config: ICalConfig) {
     this.url = config.url;
   }
 
+  /**
+   * Fetches and parses iCal events within the specified date range.
+   *
+   * This method:
+   * - Validates the configured URL
+   * - Uses CORS proxy for restricted domains when needed
+   * - Parses iCal data into structured events
+   * - Filters events by the specified date range
+   * - Logs security events for audit purposes
+   *
+   * @param startDate - The start date for filtering events (inclusive)
+   * @param endDate - The end date for filtering events (inclusive)
+   * @returns Promise that resolves to an array of Meeting objects
+   * @throws When the HTTP request fails or iCal data cannot be parsed
+   *
+   * @example
+   * ```typescript
+   * const events = await icalService.getEvents(
+   *   new Date('2024-01-01'),
+   *   new Date('2024-01-31')
+   * );
+   * console.log(`Found ${events.length} events`);
+   * ```
+   */
   async getEvents(startDate: Date, endDate: Date): Promise<Meeting[]> {
     if (!this.url || !this.url.trim()) {
       // iCal URL not configured
@@ -95,6 +161,23 @@ export class ICalService {
     }
   }
 
+  /**
+   * Parses raw iCal data string into an array of structured ICalEvent objects.
+   *
+   * This method handles:
+   * - Line folding (multi-line values)
+   * - VEVENT blocks parsing
+   * - Property extraction and validation
+   * - Event validation before inclusion
+   *
+   * @param icalData - Raw iCal format string data
+   * @returns Array of parsed and validated ICalEvent objects
+   *
+   * @remarks
+   * The parser handles the most common iCal properties: UID, SUMMARY, DTSTART, DTEND,
+   * STATUS, TRANSP (transparency), and DESCRIPTION. Events missing required properties
+   * (uid, dtstart, dtend) are filtered out.
+   */
   private parseICalData(icalData: string): ICalEvent[] {
     const events: ICalEvent[] = [];
     const lines = icalData.split(/\r?\n/);
@@ -138,6 +221,20 @@ export class ICalService {
     return events;
   }
 
+  /**
+   * Sets a property value on an ICalEvent object based on the property name.
+   *
+   * This method maps iCal property names to ICalEvent object properties and handles
+   * property parameters (e.g., DTSTART;TZID=... becomes DTSTART).
+   *
+   * @param event - Partial ICalEvent object being constructed
+   * @param property - iCal property name (may include parameters after semicolon)
+   * @param value - Property value to set
+   *
+   * @remarks
+   * Property parameters (after semicolon) are stripped from the property name.
+   * Date properties are parsed using parseICalDate method.
+   */
   private setEventProperty(
     event: Partial<ICalEvent>,
     property: string,
@@ -171,6 +268,30 @@ export class ICalService {
     }
   }
 
+  /**
+   * Parses iCal date strings into JavaScript Date objects.
+   *
+   * Supports multiple iCal date formats:
+   * - Date only: YYYYMMDD
+   * - UTC datetime: YYYYMMDDTHHMMSSZ
+   * - Local datetime: YYYYMMDDTHHMMSS
+   * - ISO format as fallback
+   *
+   * @param dateString - iCal formatted date string
+   * @returns Parsed Date object, or current date if parsing fails
+   *
+   * @example
+   * ```typescript
+   * // Date only
+   * parseICalDate('20240115') // → January 15, 2024
+   *
+   * // UTC datetime
+   * parseICalDate('20240115T143000Z') // → January 15, 2024 14:30:00 UTC
+   *
+   * // Local datetime
+   * parseICalDate('20240115T143000') // → January 15, 2024 14:30:00 local
+   * ```
+   */
   private parseICalDate(dateString: string): Date {
     // Remove timezone info for simple parsing
     const cleanDate = dateString.replace(/;.*$/, '');
@@ -216,6 +337,15 @@ export class ICalService {
     }
   }
 
+  /**
+   * Type guard to validate if a partial event object is a complete ICalEvent.
+   *
+   * @param event - Partial event object to validate
+   * @returns True if event has all required properties with valid dates
+   *
+   * @remarks
+   * Required properties are: uid, dtstart, dtend with valid Date objects.
+   */
   private isValidEvent(event: Partial<ICalEvent>): event is ICalEvent {
     return !!(
       event.uid &&
@@ -226,6 +356,16 @@ export class ICalService {
     );
   }
 
+  /**
+   * Converts an ICalEvent object to a Meeting object for the application.
+   *
+   * @param event - ICalEvent to convert
+   * @returns Meeting object with mapped properties
+   *
+   * @remarks
+   * The isOptional property is determined using business logic in determineIfEventIsOptional.
+   * Events without titles are assigned "Sin título" as default.
+   */
   private mapICalEventToMeeting(event: ICalEvent): Meeting {
     const isOptional = this.determineIfEventIsOptional(event);
 
@@ -238,6 +378,26 @@ export class ICalService {
     };
   }
 
+  /**
+   * Determines if an event should be considered optional based on various criteria.
+   *
+   * An event is considered optional if:
+   * 1. Status is CANCELLED
+   * 2. Transparency is TRANSPARENT (doesn't block time)
+   * 3. Title contains optional keywords in Spanish or English
+   *
+   * @param event - ICalEvent to evaluate
+   * @returns True if the event should be treated as optional
+   *
+   * @example
+   * ```typescript
+   * // These events would be considered optional:
+   * // - Status: CANCELLED
+   * // - Transparency: TRANSPARENT
+   * // - Title: "Meeting (opcional)"
+   * // - Title: "Optional standup"
+   * ```
+   */
   private determineIfEventIsOptional(event: ICalEvent): boolean {
     // Event is optional if:
     // 1. Status is CANCELLED
@@ -267,6 +427,16 @@ export class ICalService {
     return false;
   }
 
+  /**
+   * Determines if a URL requires CORS proxy to bypass browser restrictions.
+   *
+   * @param url - URL to check for CORS restrictions
+   * @returns True if the URL requires CORS proxy for browser access
+   *
+   * @remarks
+   * In Electron environment, CORS proxy is never needed since there are no CORS restrictions.
+   * For web browsers, certain domains are known to have CORS restrictions.
+   */
   private needsCorsProxy(url: string): boolean {
     // In Electron, we don't need CORS proxy since there are no CORS restrictions
     if (electronUtils.isElectron()) {
@@ -291,6 +461,20 @@ export class ICalService {
     }
   }
 
+  /**
+   * Creates a sanitized version of the URL for secure logging purposes.
+   *
+   * Removes sensitive query parameters and fragments while preserving the basic URL structure.
+   *
+   * @param url - Original URL to sanitize
+   * @returns Sanitized URL string with protocol, host, and path only
+   *
+   * @example
+   * ```typescript
+   * sanitizeUrl('https://calendar.google.com/calendar/ical/user@gmail.com/private-xyz/basic.ics')
+   * // Returns: 'https://calendar.google.com/calendar/ical/user@gmail.com/private-xyz/basic.ics'
+   * ```
+   */
   private sanitizeUrl(url: string): string {
     // Remove sensitive parts from URL for logging
     try {
@@ -301,6 +485,19 @@ export class ICalService {
     }
   }
 
+  /**
+   * Logs security events for audit trail and monitoring purposes.
+   *
+   * Events are stored in localStorage with timestamp, event type, and contextual details.
+   * Only the most recent 100 log entries are retained.
+   *
+   * @param event - Event type identifier
+   * @param details - Additional context and data for the event
+   *
+   * @remarks
+   * Log entries include timestamp, user agent, service identifier, and provided details.
+   * This provides an audit trail for calendar access and security monitoring.
+   */
   private logSecurityEvent(event: string, details: Record<string, any>): void {
     const logEntry = {
       timestamp: new Date().toISOString(),
@@ -324,6 +521,25 @@ export class ICalService {
     localStorage.setItem('calendar_audit_log', JSON.stringify(recentLogs));
   }
 
+  /**
+   * Tests the connection to the configured iCal URL to verify accessibility.
+   *
+   * This method:
+   * - Validates the URL configuration
+   * - Performs a lightweight request (HEAD or GET through proxy)
+   * - Validates response content for proxy requests
+   * - Logs the connection test results
+   *
+   * @returns Promise that resolves to true if connection is successful, false otherwise
+   *
+   * @example
+   * ```typescript
+   * const isConnected = await icalService.testConnection();
+   * if (!isConnected) {
+   *   console.error('Cannot connect to iCal URL');
+   * }
+   * ```
+   */
   async testConnection(): Promise<boolean> {
     if (!this.url || !this.url.trim()) {
       return false;
