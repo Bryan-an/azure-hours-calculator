@@ -7,19 +7,95 @@ declare global {
   }
 }
 
+/**
+ * Helper class for Google OAuth authentication and Google Calendar API integration.
+ * Supports both Electron and web browser environments with different authentication flows.
+ *
+ * @example
+ * ```typescript
+ * // Set the Google Client ID
+ * GoogleAuthHelper.setClientId('your-google-client-id');
+ *
+ * // Sign in and get access token
+ * try {
+ *   const accessToken = await GoogleAuthHelper.signIn();
+ *   console.log('Signed in successfully:', accessToken);
+ * } catch (error) {
+ *   console.error('Sign in failed:', error);
+ * }
+ *
+ * // Sign out
+ * await GoogleAuthHelper.signOut();
+ * ```
+ *
+ * @public
+ */
 export class GoogleAuthHelper {
+  /** Google Client ID for OAuth authentication */
   private static CLIENT_ID: string | null = null;
+
+  /** Google Calendar API scopes for read-only access */
   private static SCOPES = 'https://www.googleapis.com/auth/calendar.readonly';
+
+  /** Google OAuth token client for web browser authentication */
   private static tokenClient: any = null;
 
-  static setClientId(clientId: string) {
+  /**
+   * Sets the Google Client ID for OAuth authentication.
+   * This must be called before attempting to sign in.
+   *
+   * @param clientId - The Google OAuth Client ID from Google Cloud Console
+   *
+   * @example
+   * ```typescript
+   * GoogleAuthHelper.setClientId('123456789-abc123def456.apps.googleusercontent.com');
+   * ```
+   *
+   * @public
+   */
+  static setClientId(clientId: string): void {
     this.CLIENT_ID = clientId;
   }
 
+  /**
+   * Checks if the application is running in an Electron environment.
+   *
+   * @returns True if running in Electron, false if running in a web browser
+   *
+   * @example
+   * ```typescript
+   * if (GoogleAuthHelper.isElectron()) {
+   *   console.log('Running in Electron');
+   * } else {
+   *   console.log('Running in web browser');
+   * }
+   * ```
+   *
+   * @public
+   */
   static isElectron(): boolean {
     return electronUtils.isElectron();
   }
 
+  /**
+   * Waits for Google API libraries to be loaded and available.
+   * Polls for the presence of required Google API objects with a timeout.
+   *
+   * @param maxWaitMs - Maximum time to wait in milliseconds (default: 10000)
+   * @returns Promise that resolves to true if APIs are available, false if timeout reached
+   *
+   * @example
+   * ```typescript
+   * const isReady = await GoogleAuthHelper.waitForGoogleAPI(5000);
+   * if (isReady) {
+   *   console.log('Google APIs are ready');
+   * } else {
+   *   console.log('Timeout waiting for Google APIs');
+   * }
+   * ```
+   *
+   * @public
+   */
   static async waitForGoogleAPI(maxWaitMs = 10000): Promise<boolean> {
     const startTime = Date.now();
     const isElectron = this.isElectron();
@@ -41,6 +117,25 @@ export class GoogleAuthHelper {
     return false;
   }
 
+  /**
+   * Initializes Google API client libraries and authentication services.
+   * Sets up different authentication flows depending on the environment (Electron vs web).
+   *
+   * @returns Promise that resolves when initialization is complete
+   * @throws Error if Google API libraries are not loaded or Client ID is not configured
+   *
+   * @example
+   * ```typescript
+   * try {
+   *   await GoogleAuthHelper.initializeGapi();
+   *   console.log('Google API initialized successfully');
+   * } catch (error) {
+   *   console.error('Failed to initialize Google API:', error);
+   * }
+   * ```
+   *
+   * @public
+   */
   static async initializeGapi(): Promise<void> {
     const isElectron = this.isElectron();
 
@@ -104,6 +199,31 @@ export class GoogleAuthHelper {
     });
   }
 
+  /**
+   * Initiates the Google OAuth sign-in flow and returns an access token.
+   * Uses different authentication methods based on the environment:
+   * - Electron: Uses popup window with OAuth flow
+   * - Web browser: Uses Google Identity Services token client
+   *
+   * @returns Promise that resolves to the access token string
+   * @throws Error if authentication fails or is cancelled by user
+   *
+   * @example
+   * ```typescript
+   * try {
+   *   const accessToken = await GoogleAuthHelper.signIn();
+   *   console.log('Access token obtained:', accessToken);
+   * } catch (error) {
+   *   if (error.message.includes('cancelada')) {
+   *     console.log('User cancelled authentication');
+   *   } else {
+   *     console.error('Sign in error:', error);
+   *   }
+   * }
+   * ```
+   *
+   * @public
+   */
   static async signIn(): Promise<string> {
     if (!this.CLIENT_ID) {
       throw new Error('Google Client ID not configured');
@@ -179,6 +299,21 @@ export class GoogleAuthHelper {
     }
   }
 
+  /**
+   * Signs out the user from Google OAuth.
+   * Revokes the current OAuth token if Google Identity Services is available.
+   * Errors are handled silently to prevent sign-out interruption.
+   *
+   * @returns Promise that resolves when sign-out is complete
+   *
+   * @example
+   * ```typescript
+   * await GoogleAuthHelper.signOut();
+   * console.log('User signed out successfully');
+   * ```
+   *
+   * @public
+   */
   static async signOut(): Promise<void> {
     try {
       if (
@@ -193,7 +328,27 @@ export class GoogleAuthHelper {
     }
   }
 
-  // Electron-specific OAuth flow using popup window
+  /**
+   * Electron-specific OAuth authentication flow using a popup window.
+   * Opens a popup window with the Google OAuth URL and waits for the callback.
+   * Monitors the popup for completion, cancellation, or timeout.
+   *
+   * @returns Promise that resolves to the access token string
+   * @throws Error if popup is blocked, authentication is cancelled, or timeout occurs
+   *
+   * @example
+   * ```typescript
+   * // This method is called internally by signIn() when in Electron environment
+   * const token = await GoogleAuthHelper.signInElectron();
+   * ```
+   *
+   * @remarks
+   * This method is automatically called by {@link GoogleAuthHelper.signIn} when running in Electron.
+   * It should not be called directly unless you specifically need Electron-style authentication.
+   *
+   * @internal
+   * @public
+   */
   static async signInElectron(): Promise<string> {
     return new Promise((resolve, reject) => {
       // Use a simpler redirect that doesn't conflict with GIS
