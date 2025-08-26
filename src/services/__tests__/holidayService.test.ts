@@ -135,6 +135,7 @@ describe('HolidayService', () => {
         const consoleSpy = vi
           .spyOn(console, 'error')
           .mockImplementation(() => {});
+
         mockedAxios.get.mockRejectedValueOnce(new Error('API Error'));
 
         const result = await holidayService.getEcuadorHolidays(2024);
@@ -178,6 +179,7 @@ describe('HolidayService', () => {
         const consoleSpy = vi
           .spyOn(console, 'error')
           .mockImplementation(() => {});
+
         mockedAxios.get.mockRejectedValueOnce({ code: 'ETIMEDOUT' });
 
         const result = await holidayService.getEcuadorHolidays(2025);
@@ -199,6 +201,7 @@ describe('HolidayService', () => {
         const result = await holidayService.getEcuadorHolidays(2024);
 
         expect(mockedAxios.get).not.toHaveBeenCalled();
+
         expect(result).toEqual(
           expect.arrayContaining([
             {
@@ -269,12 +272,14 @@ describe('HolidayService', () => {
               holiday.date === '2025-03-03' && holiday.name === 'Carnaval'
           )
         ).toBe(true);
+
         expect(
           result.some(
             (holiday) =>
               holiday.date === '2025-03-04' && holiday.name === 'Carnaval'
           )
         ).toBe(true);
+
         expect(
           result.some(
             (holiday) =>
@@ -291,6 +296,7 @@ describe('HolidayService', () => {
         expect(
           result2023.some((holiday) => holiday.date === '2023-01-01')
         ).toBe(true);
+
         expect(
           result2026.some((holiday) => holiday.date === '2026-01-01')
         ).toBe(true);
