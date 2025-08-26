@@ -119,3 +119,10 @@ Thumbs.db
 # Electron build outputs
 /app-builds/
 /release-builds/
+
+# Cursor rules
+.cursor/
+
+# Claude
+.claude/
+CLAUDE.md

@@ -34,20 +34,45 @@ export const handlers = [
     });
   }),
 
-  // Holiday API (si usas alguna API externa para festivos)
-  http.get('https://api.example.com/holidays', () => {
-    return HttpResponse.json([
-      {
-        date: '2024-01-01',
-        name: "New Year's Day",
-        country: 'US',
+  // Calendarific API for Ecuador holidays (used by HolidayService)
+  http.get('https://calendarific.com/api/v2/holidays', ({ request }) => {
+    const url = new URL(request.url);
+    const country = url.searchParams.get('country');
+    const year = url.searchParams.get('year');
+
+    if (country === 'EC' && year === '2024') {
+      return HttpResponse.json({
+        response: {
+          holidays: [
+            {
+              date: { iso: '2024-01-01' },
+              name: 'Año Nuevo',
+              type: ['National'],
+              global: true,
+            },
+            {
+              date: { iso: '2024-05-01' },
+              name: 'Día del Trabajador',
+              type: ['National'],
+              global: true,
+            },
+            {
+              date: { iso: '2024-12-25' },
+              name: 'Navidad',
+              type: ['National'],
+              global: true,
+            },
+          ],
+        },
+      });
+    }
+
+    // Fallback for other countries/years
+    return HttpResponse.json({
+      response: {
+        holidays: [],
       },
-      {
-        date: '2024-12-25',
-        name: 'Christmas Day',
-        country: 'US',
-      },
-    ]);
+    });
   }),
 
   // Catch-all handler para requests no manejados en desarrollo
